@@ -1,0 +1,94 @@
+definitions:
+  routers.MatrixResponse:
+    properties:
+      matrix:
+        items:
+          items:
+            type: integer
+          type: array
+        type: array
+      size:
+        type: integer
+    type: object
+  routers.SchulteScoreRequest:
+    properties:
+      isPassed:
+        type: boolean
+      trainingNum:
+        type: integer
+      userId:
+        type: string
+    required:
+    - isPassed
+    - trainingNum
+    - userId
+    type: object
+host: localhost:8000
+info:
+  contact: {}
+  description: 大脑训练网页开发
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: API 文档
+  version: "1.0"
+paths:
+  /api/schulte/matrix:
+    get:
+      consumes:
+      - application/json
+      description: 为舒尔特表格提供随机数字矩阵
+      parameters:
+      - default: 5
+        description: 矩阵大小（如 5 表示 5x5 矩阵）
+        in: query
+        maximum: 10
+        minimum: 3
+        name: size
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回矩阵数据
+          schema:
+            $ref: '#/definitions/routers.MatrixResponse'
+      summary: 舒尔特表格
+      tags:
+      - 舒尔特矩阵
+  /api/schulte/scores:
+    post:
+      consumes:
+      - application/json
+      description: 保存用户舒尔特表格游戏成绩
+      parameters:
+      - description: 成绩数据
+        in: body
+        name: score
+        required: true
+        schema:
+          $ref: '#/definitions/routers.SchulteScoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 保存成功响应
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 服务器内部错误
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 提交成绩
+      tags:
+      - 成绩管理
+swagger: "2.0"

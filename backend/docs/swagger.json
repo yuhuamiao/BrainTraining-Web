@@ -1,0 +1,139 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "大脑训练网页开发",
+        "title": "API 文档",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {},
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8000",
+    "paths": {
+        "/api/schulte/matrix": {
+            "get": {
+                "description": "为舒尔特表格提供随机数字矩阵",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "舒尔特矩阵"
+                ],
+                "summary": "舒尔特表格",
+                "parameters": [
+                    {
+                        "maximum": 10,
+                        "minimum": 3,
+                        "type": "integer",
+                        "default": 5,
+                        "description": "矩阵大小（如 5 表示 5x5 矩阵）",
+                        "name": "size",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回矩阵数据",
+                        "schema": {
+                            "$ref": "#/definitions/routers.MatrixResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/schulte/scores": {
+            "post": {
+                "description": "保存用户舒尔特表格游戏成绩",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "成绩管理"
+                ],
+                "summary": "提交成绩",
+                "parameters": [
+                    {
+                        "description": "成绩数据",
+                        "name": "score",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routers.SchulteScoreRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "保存成功响应",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "routers.MatrixResponse": {
+            "type": "object",
+            "properties": {
+                "matrix": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "size": {
+                    "type": "integer"
+                }
+            }
+        },
+        "routers.SchulteScoreRequest": {
+            "type": "object",
+            "required": [
+                "isPassed",
+                "trainingNum",
+                "userId"
+            ],
+            "properties": {
+                "isPassed": {
+                    "type": "boolean"
+                },
+                "trainingNum": {
+                    "type": "integer"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
