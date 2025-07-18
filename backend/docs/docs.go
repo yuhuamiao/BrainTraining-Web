@@ -20,7 +20,97 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/schulte/matrix": {
+        "/api/v1/color_words/color": {
+            "get": {
+                "description": "通过WebSocket推送颜色变化",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "多色文字"
+                ],
+                "summary": "颜色流推送",
+                "responses": {}
+            }
+        },
+        "/api/v1/color_words/matrix": {
+            "get": {
+                "description": "生成一组文字和颜色不匹配的条目",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "多色文字"
+                ],
+                "summary": "生成颜色文字",
+                "parameters": [
+                    {
+                        "enum": [
+                            "easy",
+                            "medium",
+                            "hard"
+                        ],
+                        "type": "string",
+                        "default": "easy",
+                        "description": "难度级别",
+                        "name": "difficulty",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    }
+                }
+            }
+        },
+        "/api/v1/color_words/scores": {
+            "post": {
+                "description": "保存用户颜色文字训练成绩",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "多色文字"
+                ],
+                "summary": "提交颜色文字成绩",
+                "parameters": [
+                    {
+                        "description": "成绩数据",
+                        "name": "score",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routers.ScoreRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/api/v1/schulte/matrix": {
             "get": {
                 "description": "为舒尔特表格提供随机数字矩阵",
                 "consumes": [
@@ -55,7 +145,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/schulte/scores": {
+        "/api/v1/schulte/scores": {
             "post": {
                 "description": "保存用户舒尔特表格游戏成绩",
                 "consumes": [
@@ -135,6 +225,25 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "trainingNum": {
+                    "type": "integer"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "routers.ScoreRequest": {
+            "type": "object",
+            "required": [
+                "success_num",
+                "training_num",
+                "userId"
+            ],
+            "properties": {
+                "success_num": {
+                    "type": "integer"
+                },
+                "training_num": {
                     "type": "integer"
                 },
                 "userId": {

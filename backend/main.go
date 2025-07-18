@@ -17,6 +17,7 @@ import (
 	"braintraining/backend/routers"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"gorm.io/gorm"
 	"log"
 	//"net/http"
 	_ "braintraining/backend/docs" // main 文件中导入 docs 包
@@ -44,6 +45,32 @@ func initGin() *gin.Engine {
 	return router
 }
 
+func DAORoutes(router *gin.Engine, db *gorm.DB) {
+	schlteDAO := dao.NewSchulteDAO(db)
+	ColorWordDAO := dao.NewColorWordDAO(db)
+	ColorWordHandler := routers.NewColorWordHandler(ColorWordDAO)
+
+	routers.SchulteRoutes(router, schlteDAO)
+	ColorWordHandler.ColorWordsRouter(router)
+}
+
+func AutoMigrate(db *gorm.DB) error {
+	if err := db.AutoMigrate(&models.SchulteScore{}); err != nil {
+		log.Fatalf("SchulteScore自动迁移失败：%v", err)
+		return err
+	} else {
+		log.Println("SchulteScore表创建/迁移成功")
+	}
+
+	if err := db.AutoMigrate(&models.ColorWordRecord{}); err != nil {
+		log.Fatalf("ColorWordRecord自动迁移失败：%v", err)
+		return err
+	} else {
+		log.Println("ColorWordRecord表创建/迁移成功")
+	}
+	return nil
+}
+
 func main() {
 	_ = godotenv.Load()
 
@@ -55,15 +82,13 @@ func main() {
 	}
 
 	// 自动迁移
-	if err := db.AutoMigrate(&models.SchulteScore{}); err != nil {
+	if err := AutoMigrate(db); err != nil {
 		log.Fatalf("自动迁移失败：%v", err)
 	} else {
 		log.Println("表创建/迁移成功")
 	}
-	
-	schlteDAO := dao.NewSchulteDAO(db)
 
-	routers.SchulteRoutes(r, schlteDAO)
+	DAORoutes(r, db)
 
 	r.GET("/health", func(c *gin.Context) {
 		if err := db.Exec("SELECT 1").Error; err != nil {

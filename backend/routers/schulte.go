@@ -31,7 +31,7 @@ type SchulteScoreRequest struct {
 // @Produce application/json
 // @Param size query int true "矩阵大小（如 5 表示 5x5 矩阵）" default(5) minimum(3) maximum(10)
 // @Success 200 {object} MatrixResponse "成功返回矩阵数据"
-// @Router /api/schulte/matrix [get]
+// @Router /api/v1/schulte/matrix [get]
 func SchulteMatrix(c *gin.Context) {
 	sizestr := c.DefaultQuery("size", "5")
 	size, err := strconv.Atoi(sizestr)
@@ -60,7 +60,7 @@ func SchulteMatrix(c *gin.Context) {
 // @Success 200 {object} map[string]interface{} "保存成功响应"
 // @Failure 400 {object} map[string]interface{} "请求参数错误"
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
-// @Router /api/schulte/scores [post]
+// @Router /api/v1/schulte/scores [post]
 func SubmitScore(c *gin.Context) {
 	dao := c.MustGet("dao").(*dao.SchulteDAO)
 
@@ -95,8 +95,8 @@ func SchulteRoutes(router *gin.Engine, dao *dao.SchulteDAO) {
 		c.Set("dao", dao)
 		c.Next()
 	})
-	router.GET("/api/schulte/matrix", SchulteMatrix)
-	router.POST("/api/schulte/scores", SubmitScore)
+	router.GET("/api/v1/schulte/matrix", SchulteMatrix)
+	router.POST("/api/v1/schulte/scores", SubmitScore)
 }
 
 func generateMatrix(size int) [][]int {

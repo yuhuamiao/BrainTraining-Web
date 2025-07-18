@@ -23,6 +23,19 @@ definitions:
     - trainingNum
     - userId
     type: object
+  routers.ScoreRequest:
+    properties:
+      success_num:
+        type: integer
+      training_num:
+        type: integer
+      userId:
+        type: string
+    required:
+    - success_num
+    - training_num
+    - userId
+    type: object
 host: localhost:8000
 info:
   contact: {}
@@ -34,7 +47,67 @@ info:
   title: API 文档
   version: "1.0"
 paths:
-  /api/schulte/matrix:
+  /api/v1/color_words/color:
+    get:
+      consumes:
+      - application/json
+      description: 通过WebSocket推送颜色变化
+      produces:
+      - application/json
+      responses: {}
+      summary: 颜色流推送
+      tags:
+      - 多色文字
+  /api/v1/color_words/matrix:
+    get:
+      consumes:
+      - application/json
+      description: 生成一组文字和颜色不匹配的条目
+      parameters:
+      - default: easy
+        description: 难度级别
+        enum:
+        - easy
+        - medium
+        - hard
+        in: query
+        name: difficulty
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: 生成颜色文字
+      tags:
+      - 多色文字
+  /api/v1/color_words/scores:
+    post:
+      consumes:
+      - application/json
+      description: 保存用户颜色文字训练成绩
+      parameters:
+      - description: 成绩数据
+        in: body
+        name: score
+        required: true
+        schema:
+          $ref: '#/definitions/routers.ScoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      summary: 提交颜色文字成绩
+      tags:
+      - 多色文字
+  /api/v1/schulte/matrix:
     get:
       consumes:
       - application/json
@@ -58,7 +131,7 @@ paths:
       summary: 舒尔特表格
       tags:
       - 舒尔特矩阵
-  /api/schulte/scores:
+  /api/v1/schulte/scores:
     post:
       consumes:
       - application/json
