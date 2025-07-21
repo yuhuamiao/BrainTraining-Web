@@ -13,6 +13,43 @@
     },
     "host": "localhost:8000",
     "paths": {
+        "/api/v1/bus/scores": {
+            "post": {
+                "description": "保存用户公交车训练成绩",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "公交车人数"
+                ],
+                "summary": "提交公交车训练成绩",
+                "parameters": [
+                    {
+                        "description": "成绩数据",
+                        "name": "score",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routers.BusScoreRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/api/v1/color_words/color": {
             "get": {
                 "description": "通过WebSocket推送颜色变化",
@@ -87,6 +124,83 @@
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/routers.ScoreRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/api/v1/memory/matrix": {
+            "get": {
+                "description": "生成一组需要记忆的方格位置",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "瞬间记忆"
+                ],
+                "summary": "生成记忆训练矩阵",
+                "parameters": [
+                    {
+                        "enum": [
+                            "easy",
+                            "medium",
+                            "hard"
+                        ],
+                        "type": "string",
+                        "default": "easy",
+                        "description": "难度级别",
+                        "name": "difficulty",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/routers.MemoryMatrixResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    }
+                }
+            }
+        },
+        "/api/v1/memory/scores": {
+            "post": {
+                "description": "保存用户记忆训练成绩",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "瞬间记忆"
+                ],
+                "summary": "提交记忆训练成绩",
+                "parameters": [
+                    {
+                        "description": "成绩数据",
+                        "name": "score",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routers.MemoryScoreRequest"
                         }
                     }
                 ],
@@ -186,9 +300,173 @@
                     }
                 }
             }
+        },
+        "/api/v1/user/change": {
+            "post": {
+                "description": "更新用户的基本信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户"
+                ],
+                "summary": "更新用户信息",
+                "parameters": [
+                    {
+                        "description": "用户更新数据",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routers.UserUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    }
+                }
+            }
+        },
+        "/api/v1/user/photo": {
+            "post": {
+                "description": "上传并更新用户头像",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户"
+                ],
+                "summary": "上传用户头像",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "用户ID",
+                        "name": "userId",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "头像文件",
+                        "name": "avatar",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    }
+                }
+            }
+        },
+        "/api/v1/user/scores": {
+            "get": {
+                "description": "获取用户在各个训练中的成绩记录",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户"
+                ],
+                "summary": "获取用户所有训练成绩",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "用户ID",
+                        "name": "userId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    }
+                }
+            }
+        },
+        "/api/v1/user/users": {
+            "get": {
+                "description": "获取用户的个人信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户"
+                ],
+                "summary": "获取用户基本信息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "用户ID",
+                        "name": "userId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "routers.BusScoreRequest": {
+            "type": "object",
+            "required": [
+                "accuracy",
+                "level",
+                "successNum",
+                "trainingNum",
+                "userId"
+            ],
+            "properties": {
+                "accuracy": {
+                    "type": "number"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "successNum": {
+                    "type": "integer"
+                },
+                "trainingNum": {
+                    "type": "integer"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
         "routers.MatrixResponse": {
             "type": "object",
             "properties": {
@@ -203,6 +481,61 @@
                 },
                 "size": {
                     "type": "integer"
+                }
+            }
+        },
+        "routers.MemoryMatrixResponse": {
+            "type": "object",
+            "properties": {
+                "answerTime": {
+                    "description": "返回 回答时间",
+                    "type": "number"
+                },
+                "difficulty": {
+                    "description": "返回 等级难度",
+                    "type": "string"
+                },
+                "displayTime": {
+                    "description": "返回 展示时间",
+                    "type": "number"
+                },
+                "positions": {
+                    "description": "返回的要亮的 15 个数字",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "totalCells": {
+                    "description": "返回一共所有的单元格",
+                    "type": "integer"
+                }
+            }
+        },
+        "routers.MemoryScoreRequest": {
+            "type": "object",
+            "required": [
+                "accuracy",
+                "level",
+                "successNum",
+                "trainingNum",
+                "userId"
+            ],
+            "properties": {
+                "accuracy": {
+                    "type": "number"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "successNum": {
+                    "type": "integer"
+                },
+                "trainingNum": {
+                    "type": "integer"
+                },
+                "userId": {
+                    "type": "string"
                 }
             }
         },
@@ -228,11 +561,19 @@
         "routers.ScoreRequest": {
             "type": "object",
             "required": [
+                "accuracy",
+                "level",
                 "success_num",
                 "training_num",
                 "userId"
             ],
             "properties": {
+                "accuracy": {
+                    "type": "number"
+                },
+                "level": {
+                    "type": "string"
+                },
                 "success_num": {
                     "type": "integer"
                 },
@@ -240,6 +581,25 @@
                     "type": "integer"
                 },
                 "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "routers.UserUpdateRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "userId",
+                "username"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                },
+                "username": {
                     "type": "string"
                 }
             }

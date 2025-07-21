@@ -1,4 +1,23 @@
 definitions:
+  routers.BusScoreRequest:
+    properties:
+      accuracy:
+        type: number
+      level:
+        type: string
+      successNum:
+        type: integer
+      trainingNum:
+        type: integer
+      userId:
+        type: string
+    required:
+    - accuracy
+    - level
+    - successNum
+    - trainingNum
+    - userId
+    type: object
   routers.MatrixResponse:
     properties:
       matrix:
@@ -9,6 +28,45 @@ definitions:
         type: array
       size:
         type: integer
+    type: object
+  routers.MemoryMatrixResponse:
+    properties:
+      answerTime:
+        description: 返回 回答时间
+        type: number
+      difficulty:
+        description: 返回 等级难度
+        type: string
+      displayTime:
+        description: 返回 展示时间
+        type: number
+      positions:
+        description: 返回的要亮的 15 个数字
+        items:
+          type: integer
+        type: array
+      totalCells:
+        description: 返回一共所有的单元格
+        type: integer
+    type: object
+  routers.MemoryScoreRequest:
+    properties:
+      accuracy:
+        type: number
+      level:
+        type: string
+      successNum:
+        type: integer
+      trainingNum:
+        type: integer
+      userId:
+        type: string
+    required:
+    - accuracy
+    - level
+    - successNum
+    - trainingNum
+    - userId
     type: object
   routers.SchulteScoreRequest:
     properties:
@@ -25,6 +83,10 @@ definitions:
     type: object
   routers.ScoreRequest:
     properties:
+      accuracy:
+        type: number
+      level:
+        type: string
       success_num:
         type: integer
       training_num:
@@ -32,9 +94,24 @@ definitions:
       userId:
         type: string
     required:
+    - accuracy
+    - level
     - success_num
     - training_num
     - userId
+    type: object
+  routers.UserUpdateRequest:
+    properties:
+      email:
+        type: string
+      userId:
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - userId
+    - username
     type: object
 host: localhost:8000
 info:
@@ -47,6 +124,30 @@ info:
   title: API 文档
   version: "1.0"
 paths:
+  /api/v1/bus/scores:
+    post:
+      consumes:
+      - application/json
+      description: 保存用户公交车训练成绩
+      parameters:
+      - description: 成绩数据
+        in: body
+        name: score
+        required: true
+        schema:
+          $ref: '#/definitions/routers.BusScoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      summary: 提交公交车训练成绩
+      tags:
+      - 公交车人数
   /api/v1/color_words/color:
     get:
       consumes:
@@ -107,6 +208,57 @@ paths:
       summary: 提交颜色文字成绩
       tags:
       - 多色文字
+  /api/v1/memory/matrix:
+    get:
+      consumes:
+      - application/json
+      description: 生成一组需要记忆的方格位置
+      parameters:
+      - default: easy
+        description: 难度级别
+        enum:
+        - easy
+        - medium
+        - hard
+        in: query
+        name: difficulty
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/routers.MemoryMatrixResponse'
+        "400":
+          description: Bad Request
+      summary: 生成记忆训练矩阵
+      tags:
+      - 瞬间记忆
+  /api/v1/memory/scores:
+    post:
+      consumes:
+      - application/json
+      description: 保存用户记忆训练成绩
+      parameters:
+      - description: 成绩数据
+        in: body
+        name: score
+        required: true
+        schema:
+          $ref: '#/definitions/routers.MemoryScoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      summary: 提交记忆训练成绩
+      tags:
+      - 瞬间记忆
   /api/v1/schulte/matrix:
     get:
       consumes:
@@ -164,4 +316,94 @@ paths:
       summary: 提交成绩
       tags:
       - 成绩管理
+  /api/v1/user/change:
+    post:
+      consumes:
+      - application/json
+      description: 更新用户的基本信息
+      parameters:
+      - description: 用户更新数据
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/routers.UserUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: 更新用户信息
+      tags:
+      - 用户
+  /api/v1/user/photo:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 上传并更新用户头像
+      parameters:
+      - description: 用户ID
+        in: formData
+        name: userId
+        required: true
+        type: string
+      - description: 头像文件
+        in: formData
+        name: avatar
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: 上传用户头像
+      tags:
+      - 用户
+  /api/v1/user/scores:
+    get:
+      consumes:
+      - application/json
+      description: 获取用户在各个训练中的成绩记录
+      parameters:
+      - description: 用户ID
+        in: query
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: 获取用户所有训练成绩
+      tags:
+      - 用户
+  /api/v1/user/users:
+    get:
+      consumes:
+      - application/json
+      description: 获取用户的个人信息
+      parameters:
+      - description: 用户ID
+        in: query
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: 获取用户基本信息
+      tags:
+      - 用户
 swagger: "2.0"

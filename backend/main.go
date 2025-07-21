@@ -46,15 +46,35 @@ func initGin() *gin.Engine {
 }
 
 func DAORoutes(router *gin.Engine, db *gorm.DB) {
+	//舒尔特矩阵
 	schlteDAO := dao.NewSchulteDAO(db)
+
+	//多色文字
 	ColorWordDAO := dao.NewColorWordDAO(db)
 	ColorWordHandler := routers.NewColorWordHandler(ColorWordDAO)
 
+	//瞬间记忆
+	MemoryDAO := dao.NewMemoryDAO(db)
+	MemoryHandler := routers.NewMemoryHandler(MemoryDAO)
+
+	//公交车人数
+	BusDAO := dao.NewBusDAO(db)
+	BusHandler := routers.NewBusHandler(BusDAO)
+
+	//用户个人界面
+	userDAO := dao.NewUserDAO(db)
+	userHandler := routers.NewUserHandler(userDAO)
+
+	//添加路由
 	routers.SchulteRoutes(router, schlteDAO)
 	ColorWordHandler.ColorWordsRouter(router)
+	MemoryHandler.MemoryRoutes(router)
+	BusHandler.BusRoutes(router)
+	userHandler.UserRoutes(router)
 }
 
-func AutoMigrate(db *gorm.DB) error {
+func AutoMigrate(db *gorm.DB) error { //添加数据库
+	//舒尔特矩阵
 	if err := db.AutoMigrate(&models.SchulteScore{}); err != nil {
 		log.Fatalf("SchulteScore自动迁移失败：%v", err)
 		return err
@@ -62,11 +82,36 @@ func AutoMigrate(db *gorm.DB) error {
 		log.Println("SchulteScore表创建/迁移成功")
 	}
 
+	//多色文字
 	if err := db.AutoMigrate(&models.ColorWordRecord{}); err != nil {
 		log.Fatalf("ColorWordRecord自动迁移失败：%v", err)
 		return err
 	} else {
 		log.Println("ColorWordRecord表创建/迁移成功")
+	}
+
+	//瞬间记忆
+	if err := db.AutoMigrate(&models.MemoryRecord{}); err != nil {
+		log.Fatalf("MemoryRecord自动迁移失败：%v", err)
+		return err
+	} else {
+		log.Println("MemoryRecord表创建/迁移成功")
+	}
+
+	//公交车人数
+	if err := db.AutoMigrate(&models.BusRecord{}); err != nil {
+		log.Fatalf("BusRecord：%v", err)
+		return err
+	} else {
+		log.Println("BusRecord表创建/迁移成功")
+	}
+
+	//用户个人界面
+	if err := db.AutoMigrate(&models.User{}); err != nil {
+		log.Fatalf("User：%v", err)
+		return err
+	} else {
+		log.Println("User表创建/迁移成功")
 	}
 	return nil
 }

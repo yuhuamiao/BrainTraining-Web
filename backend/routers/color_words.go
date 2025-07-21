@@ -77,6 +77,8 @@ func (h *ColorWordHandler) SubmitScore(c *gin.Context) {
 	record := &models.ColorWordRecord{
 		UserID:      req.UserID,
 		SuccessNum:  req.SuccessNum,
+		Level:       req.Level,
+		Accuracy:    req.Accuracy, //准确度
 		TrainingNum: req.TrainingNum,
 	}
 
@@ -191,9 +193,11 @@ func generateRandomColor() string {
 
 // 请求和响应结构体
 type ScoreRequest struct {
-	UserID      string `json:"userId" binding:"required"`
-	SuccessNum  int    `json:"success_num" binding:"required"`
-	TrainingNum int    `json:"training_num" binding:"required"`
+	UserID      string  `json:"userId" binding:"required"`
+	SuccessNum  int     `json:"success_num" binding:"required"`
+	Level       string  `json:"level" binding:"required"`
+	Accuracy    float64 `json:"accuracy" binding:"required"`
+	TrainingNum int     `json:"training_num" binding:"required"`
 }
 
 type ColorWordMatrixResponse struct {
@@ -208,6 +212,7 @@ type ErrorResponse struct {
 }
 
 type SuccessResponse struct {
-	Success bool  `json:"success"`
-	Data    gin.H `json:"data"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Data    gin.H  `json:"data"`
 }
