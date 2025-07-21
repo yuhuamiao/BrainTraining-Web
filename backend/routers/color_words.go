@@ -26,12 +26,12 @@ func NewColorWordHandler(dao *dao.ColorWordDAO) *ColorWordHandler {
 	return &ColorWordHandler{dao: dao}
 }
 
-func (h *ColorWordHandler) ColorWordsRouter(r *gin.Engine) {
-	r.GET("/api/v1/color_words/matrix", h.ColorWordsMatrix)
-	r.POST("/api/v1/color_words/scores", h.SubmitScore)
-	r.GET("/api/v1/color_words/color", h.ColorStream)
-
-}
+//func (h *ColorWordHandler) ColorWordsRouter(r *gin.Engine) {
+//	r.GET("/api/v1/color_words/matrix", h.ColorWordsMatrix)
+//	r.POST("/api/v1/color_words/scores", h.SubmitScore)
+//	r.GET("/api/v1/color_words/color", h.ColorStream)
+//
+//}
 
 // ColorWordsMatrix 生成颜色文字矩阵
 // @Summary 生成颜色文字
@@ -58,6 +58,8 @@ func (h *ColorWordHandler) ColorWordsMatrix(c *gin.Context) {
 // @Tags 多色文字
 // @Accept json
 // @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "Bearer Token" default(Bearer <your_token>)
 // @Param score body ScoreRequest true "成绩数据"
 // @Success 200
 // @Failure 400

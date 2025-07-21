@@ -6,6 +6,10 @@
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
+
 // @host localhost:8000
 
 package main
@@ -13,6 +17,7 @@ package main
 import (
 	"braintraining/backend/config"
 	"braintraining/backend/dao"
+	"braintraining/backend/middleware"
 	"braintraining/backend/models"
 	"braintraining/backend/routers"
 	"github.com/gin-gonic/gin"
@@ -45,32 +50,102 @@ func initGin() *gin.Engine {
 	return router
 }
 
+//这是原来没有添加中间件的DAORoutes函数，所有的添加路由函数在routers包中的各个文件中
+//func DAORoutes(router *gin.Engine, db *gorm.DB) {
+//	//舒尔特矩阵
+//	schlteDAO := dao.NewSchulteDAO(db)
+//
+//	//多色文字
+//	ColorWordDAO := dao.NewColorWordDAO(db)
+//	ColorWordHandler := routers.NewColorWordHandler(ColorWordDAO)
+//
+//	//瞬间记忆
+//	MemoryDAO := dao.NewMemoryDAO(db)
+//	MemoryHandler := routers.NewMemoryHandler(MemoryDAO)
+//
+//	//公交车人数
+//	BusDAO := dao.NewBusDAO(db)
+//	BusHandler := routers.NewBusHandler(BusDAO)
+//
+//	//用户个人界面
+//	userDAO := dao.NewUserDAO(db)
+//	userHandler := routers.NewUserHandler(userDAO)
+//
+//	//添加路由
+//	routers.SchulteRoutes(router, schlteDAO)
+//	ColorWordHandler.ColorWordsRouter(router)
+//	MemoryHandler.MemoryRoutes(router)
+//	BusHandler.BusRoutes(router)
+//	userHandler.UserRoutes(router)
+//}
+
 func DAORoutes(router *gin.Engine, db *gorm.DB) {
-	//舒尔特矩阵
-	schlteDAO := dao.NewSchulteDAO(db)
-
-	//多色文字
-	ColorWordDAO := dao.NewColorWordDAO(db)
-	ColorWordHandler := routers.NewColorWordHandler(ColorWordDAO)
-
-	//瞬间记忆
-	MemoryDAO := dao.NewMemoryDAO(db)
-	MemoryHandler := routers.NewMemoryHandler(MemoryDAO)
-
-	//公交车人数
-	BusDAO := dao.NewBusDAO(db)
-	BusHandler := routers.NewBusHandler(BusDAO)
-
-	//用户个人界面
+	// 初始化DAO
 	userDAO := dao.NewUserDAO(db)
-	userHandler := routers.NewUserHandler(userDAO)
 
-	//添加路由
-	routers.SchulteRoutes(router, schlteDAO)
-	ColorWordHandler.ColorWordsRouter(router)
-	MemoryHandler.MemoryRoutes(router)
-	BusHandler.BusRoutes(router)
-	userHandler.UserRoutes(router)
+	// 创建认证中间件
+	authMiddleware := middleware.AuthMiddleware(userDAO)
+
+	// 公开路由 (不需要认证)
+	publicRoutes(router, db)
+
+	// 受保护路由 (需要认证)
+	protectedRoutes(router, db, authMiddleware)
+}
+
+// 公开路由
+func publicRoutes(router *gin.Engine, db *gorm.DB) {
+	// 登录注册
+	authHandler := routers.NewAuthHandler(dao.NewUserDAO(db))
+	router.POST("/api/v1/login", authHandler.Login)
+	router.POST("/api/v1/register", authHandler.Register)
+
+	// 其他公开API (如获取训练题目)
+	//schulteDAO := dao.NewSchulteDAO(db)
+	router.GET("/api/v1/schulte/matrix", routers.SchulteMatrix) // 获取舒尔特矩阵
+
+	colorWordHandler := routers.NewColorWordHandler(dao.NewColorWordDAO(db))
+	router.GET("/api/v1/color_words/matrix", colorWordHandler.ColorWordsMatrix) // 获取颜色文字
+	router.GET("/api/v1/color_words/color", colorWordHandler.ColorStream)
+
+	memoryHandler := routers.NewMemoryHandler(dao.NewMemoryDAO(db))
+	router.GET("/api/v1/memory/matrix", memoryHandler.MemoryMatrix) // 获取记忆矩阵
+}
+
+// 受保护路由
+func protectedRoutes(router *gin.Engine, db *gorm.DB, authMiddleware gin.HandlerFunc) {
+	// 创建路由组并应用中间件
+	protected := router.Group("/api/v1")
+	protected.Use(authMiddleware)
+
+	// 舒尔特矩阵
+	schulteDAO := dao.NewSchulteDAO(db)
+	protected.POST("/schulte/scores", func(c *gin.Context) {
+		routers.SubmitScore(c, schulteDAO)
+	})
+
+	// 多色文字
+	colorWordHandler := routers.NewColorWordHandler(dao.NewColorWordDAO(db))
+	protected.POST("/color_words/scores", colorWordHandler.SubmitScore)
+	//protected.GET("/color_words/color", colorWordHandler.ColorStream)
+
+	// 瞬间记忆
+	memoryHandler := routers.NewMemoryHandler(dao.NewMemoryDAO(db))
+	protected.POST("/memory/scores", memoryHandler.SubmitScore)
+
+	// 公交车人数
+	busHandler := routers.NewBusHandler(dao.NewBusDAO(db))
+	protected.POST("/bus/scores", busHandler.SubmitScore)
+
+	// 用户个人界面
+	userHandler := routers.NewUserHandler(dao.NewUserDAO(db))
+	userGroup := protected.Group("/user")
+	{
+		userGroup.GET("/scores", userHandler.GetUserScores)
+		userGroup.GET("/users", userHandler.GetUserInfo)
+		userGroup.POST("/change", userHandler.UpdateUserInfo)
+		userGroup.POST("/photo", userHandler.UploadAvatar)
+	}
 }
 
 func AutoMigrate(db *gorm.DB) error { //添加数据库

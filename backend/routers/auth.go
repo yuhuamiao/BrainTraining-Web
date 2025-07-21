@@ -4,6 +4,7 @@ package routers
 import (
 	"braintraining/backend/dao"
 	"braintraining/backend/models"
+	"braintraining/backend/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"net/http"
@@ -18,10 +19,10 @@ func NewAuthHandler(userDAO *dao.UserDAO) *AuthHandler {
 	return &AuthHandler{UserDAO: userDAO}
 }
 
-func (h *AuthHandler) AuthRoutes(r *gin.Engine) {
-	r.POST("/api/v1/login", h.Login)
-	r.POST("/api/v1/register", h.Register)
-}
+//func (h *AuthHandler) AuthRoutes(r *gin.Engine) {
+//	r.POST("/api/v1/login", h.Login)
+//	r.POST("/api/v1/register", h.Register)
+//}
 
 // RegisterRequest 注册请求结构
 type RegisterRequest struct {
@@ -148,8 +149,15 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// 生成token (简化处理，实际应该用JWT)
-	token := user.UserID // 这里只是示例，应该生成真正的JWT token
+	// 生成JWT token
+	token, err := utils.GenerateToken(user.UserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:   "TokenError",
+			Message: "生成token失败",
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, LoginResponse{
 		Success: true,

@@ -16,15 +16,15 @@ func NewUserHandler(dao *dao.UserDAO) *UserHandler {
 	return &UserHandler{dao: dao}
 }
 
-func (h *UserHandler) UserRoutes(r *gin.Engine) {
-	userGroup := r.Group("/api/v1/user")
-	{
-		userGroup.GET("/scores", h.GetUserScores)
-		userGroup.GET("/users", h.GetUserInfo)
-		userGroup.POST("/change", h.UpdateUserInfo)
-		userGroup.POST("/photo", h.UploadAvatar)
-	}
-}
+//func (h *UserHandler) UserRoutes(r *gin.Engine) {
+//	userGroup := r.Group("/api/v1/user")
+//	{
+//		userGroup.GET("/scores", h.GetUserScores)
+//		userGroup.GET("/users", h.GetUserInfo)
+//		userGroup.POST("/change", h.UpdateUserInfo)
+//		userGroup.POST("/photo", h.UploadAvatar)
+//	}
+//}
 
 // GetUserScores 获取用户成绩
 // @Summary 获取用户所有训练成绩
@@ -32,6 +32,8 @@ func (h *UserHandler) UserRoutes(r *gin.Engine) {
 // @Tags 用户
 // @Accept json
 // @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "Bearer Token" default(Bearer <your_token>)
 // @Param userId query string true "用户ID"
 // @Success 200
 // @Failure 400
@@ -64,6 +66,8 @@ func (h *UserHandler) GetUserScores(c *gin.Context) {
 // @Tags 用户
 // @Accept json
 // @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "Bearer Token" default(Bearer <your_token>)
 // @Param userId query string true "用户ID"
 // @Success 200
 // @Failure 400
@@ -105,6 +109,8 @@ func (h *UserHandler) GetUserInfo(c *gin.Context) {
 // @Tags 用户
 // @Accept json
 // @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "Bearer Token" default(Bearer <your_token>)
 // @Param user body UserUpdateRequest true "用户更新数据"
 // @Success 200
 // @Failure 400
@@ -145,6 +151,8 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 // @Tags 用户
 // @Accept multipart/form-data
 // @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "Bearer Token" default(Bearer <your_token>)
 // @Param userId formData string true "用户ID"
 // @Param avatar formData file true "头像文件"
 // @Success 200

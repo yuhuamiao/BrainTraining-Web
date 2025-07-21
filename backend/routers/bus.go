@@ -15,9 +15,9 @@ func NewBusHandler(dao *dao.BusDAO) *BusHandler {
 	return &BusHandler{dao: dao}
 }
 
-func (h *BusHandler) BusRoutes(r *gin.Engine) {
-	r.POST("/api/v1/bus/scores", h.SubmitScore)
-}
+//func (h *BusHandler) BusRoutes(r *gin.Engine) {
+//	r.POST("/api/v1/bus/scores", h.SubmitScore)
+//}
 
 // SubmitScore 提交成绩
 // @Summary 提交公交车训练成绩
@@ -25,6 +25,8 @@ func (h *BusHandler) BusRoutes(r *gin.Engine) {
 // @Tags 公交车人数
 // @Accept json
 // @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "Bearer Token" default(Bearer <your_token>)
 // @Param score body BusScoreRequest true "成绩数据"
 // @Success 200
 // @Failure 400

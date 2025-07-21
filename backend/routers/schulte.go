@@ -56,13 +56,15 @@ func SchulteMatrix(c *gin.Context) {
 // @Tags 成绩管理
 // @Accept application/json
 // @Produce application/json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "Bearer Token" default(Bearer <your_token>)
 // @Param score body SchulteScoreRequest true "成绩数据"
 // @Success 200 {object} map[string]interface{} "保存成功响应"
 // @Failure 400 {object} map[string]interface{} "请求参数错误"
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
 // @Router /api/v1/schulte/scores [post]
-func SubmitScore(c *gin.Context) {
-	dao := c.MustGet("dao").(*dao.SchulteDAO)
+func SubmitScore(c *gin.Context, dao *dao.SchulteDAO) {
+	//dao := c.MustGet("dao").(*dao.SchulteDAO)
 
 	var score SchulteScoreRequest
 	if err := c.ShouldBindJSON(&score); err != nil || score.TrainingNum < 1 || score.TrainingNum > 6 {
@@ -89,15 +91,15 @@ func SubmitScore(c *gin.Context) {
 	})
 }
 
-// SchulteRoutes 注册舒尔特相关路由
-func SchulteRoutes(router *gin.Engine, dao *dao.SchulteDAO) {
-	router.Use(func(c *gin.Context) {
-		c.Set("dao", dao)
-		c.Next()
-	})
-	router.GET("/api/v1/schulte/matrix", SchulteMatrix)
-	router.POST("/api/v1/schulte/scores", SubmitScore)
-}
+//// SchulteRoutes 注册舒尔特相关路由
+//func SchulteRoutes(router *gin.Engine, dao *dao.SchulteDAO) {
+//	router.Use(func(c *gin.Context) {
+//		c.Set("dao", dao)
+//		c.Next()
+//	})
+//	router.GET("/api/v1/schulte/matrix", SchulteMatrix)
+//	router.POST("/api/v1/schulte/scores", SubmitScore)
+//}
 
 func generateMatrix(size int) [][]int {
 	Matrix := make([][]int, size) //创建一个 size * size 大小的矩阵切片

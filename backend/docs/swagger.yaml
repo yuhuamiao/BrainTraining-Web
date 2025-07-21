@@ -18,6 +18,16 @@ definitions:
     - trainingNum
     - userId
     type: object
+  routers.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
   routers.MatrixResponse:
     properties:
       matrix:
@@ -67,6 +77,20 @@ definitions:
     - successNum
     - trainingNum
     - userId
+    type: object
+  routers.RegisterRequest:
+    properties:
+      password:
+        description: Email    string `json:"email" binding:"required,email"`
+        minLength: 6
+        type: string
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - password
+    - username
     type: object
   routers.SchulteScoreRequest:
     properties:
@@ -130,6 +154,12 @@ paths:
       - application/json
       description: 保存用户公交车训练成绩
       parameters:
+      - default: Bearer <your_token>
+        description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: 成绩数据
         in: body
         name: score
@@ -145,6 +175,8 @@ paths:
           description: Bad Request
         "500":
           description: Internal Server Error
+      security:
+      - ApiKeyAuth: []
       summary: 提交公交车训练成绩
       tags:
       - 公交车人数
@@ -190,6 +222,12 @@ paths:
       - application/json
       description: 保存用户颜色文字训练成绩
       parameters:
+      - default: Bearer <your_token>
+        description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: 成绩数据
         in: body
         name: score
@@ -205,9 +243,33 @@ paths:
           description: Bad Request
         "500":
           description: Internal Server Error
+      security:
+      - ApiKeyAuth: []
       summary: 提交颜色文字成绩
       tags:
       - 多色文字
+  /api/v1/login:
+    post:
+      consumes:
+      - application/json
+      description: 用户登录获取认证token
+      parameters:
+      - description: 登录凭证
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/routers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: 用户登录
+      tags:
+      - 认证
   /api/v1/memory/matrix:
     get:
       consumes:
@@ -241,6 +303,12 @@ paths:
       - application/json
       description: 保存用户记忆训练成绩
       parameters:
+      - default: Bearer <your_token>
+        description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: 成绩数据
         in: body
         name: score
@@ -256,9 +324,33 @@ paths:
           description: Bad Request
         "500":
           description: Internal Server Error
+      security:
+      - ApiKeyAuth: []
       summary: 提交记忆训练成绩
       tags:
       - 瞬间记忆
+  /api/v1/register:
+    post:
+      consumes:
+      - application/json
+      description: 创建新用户账号
+      parameters:
+      - description: 注册信息
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/routers.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: 用户注册
+      tags:
+      - 认证
   /api/v1/schulte/matrix:
     get:
       consumes:
@@ -289,6 +381,12 @@ paths:
       - application/json
       description: 保存用户舒尔特表格游戏成绩
       parameters:
+      - default: Bearer <your_token>
+        description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: 成绩数据
         in: body
         name: score
@@ -313,6 +411,8 @@ paths:
           schema:
             additionalProperties: true
             type: object
+      security:
+      - ApiKeyAuth: []
       summary: 提交成绩
       tags:
       - 成绩管理
@@ -322,6 +422,12 @@ paths:
       - application/json
       description: 更新用户的基本信息
       parameters:
+      - default: Bearer <your_token>
+        description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: 用户更新数据
         in: body
         name: user
@@ -335,6 +441,8 @@ paths:
           description: OK
         "400":
           description: Bad Request
+      security:
+      - ApiKeyAuth: []
       summary: 更新用户信息
       tags:
       - 用户
@@ -344,6 +452,12 @@ paths:
       - multipart/form-data
       description: 上传并更新用户头像
       parameters:
+      - default: Bearer <your_token>
+        description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: 用户ID
         in: formData
         name: userId
@@ -361,6 +475,8 @@ paths:
           description: OK
         "400":
           description: Bad Request
+      security:
+      - ApiKeyAuth: []
       summary: 上传用户头像
       tags:
       - 用户
@@ -370,6 +486,12 @@ paths:
       - application/json
       description: 获取用户在各个训练中的成绩记录
       parameters:
+      - default: Bearer <your_token>
+        description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: 用户ID
         in: query
         name: userId
@@ -382,6 +504,8 @@ paths:
           description: OK
         "400":
           description: Bad Request
+      security:
+      - ApiKeyAuth: []
       summary: 获取用户所有训练成绩
       tags:
       - 用户
@@ -391,6 +515,12 @@ paths:
       - application/json
       description: 获取用户的个人信息
       parameters:
+      - default: Bearer <your_token>
+        description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: 用户ID
         in: query
         name: userId
@@ -403,7 +533,14 @@ paths:
           description: OK
         "400":
           description: Bad Request
+      security:
+      - ApiKeyAuth: []
       summary: 获取用户基本信息
       tags:
       - 用户
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

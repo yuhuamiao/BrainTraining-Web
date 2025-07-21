@@ -19,10 +19,10 @@ func NewMemoryHandler(dao *dao.MemoryDAO) *MemoryHandler {
 	}
 }
 
-func (h *MemoryHandler) MemoryRoutes(r *gin.Engine) {
-	r.GET("/api/v1/memory/matrix", h.MemoryMatrix)
-	r.POST("/api/v1/memory/scores", h.SubmitScore)
-}
+//func (h *MemoryHandler) MemoryRoutes(r *gin.Engine) {
+//	r.GET("/api/v1/memory/matrix", h.MemoryMatrix)
+//	r.POST("/api/v1/memory/scores", h.SubmitScore)
+//}
 
 // MemoryMatrix 生成记忆矩阵
 // @Summary 生成记忆训练矩阵
@@ -63,6 +63,8 @@ func (h *MemoryHandler) MemoryMatrix(c *gin.Context) {
 // @Tags 瞬间记忆
 // @Accept json
 // @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "Bearer Token" default(Bearer <your_token>)
 // @Param score body MemoryScoreRequest true "成绩数据"
 // @Success 200
 // @Failure 400

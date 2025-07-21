@@ -22,6 +22,11 @@ const docTemplate = `{
     "paths": {
         "/api/v1/bus/scores": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "保存用户公交车训练成绩",
                 "consumes": [
                     "application/json"
@@ -34,6 +39,14 @@ const docTemplate = `{
                 ],
                 "summary": "提交公交车训练成绩",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cyour_token\u003e",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "成绩数据",
                         "name": "score",
@@ -112,6 +125,11 @@ const docTemplate = `{
         },
         "/api/v1/color_words/scores": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "保存用户颜色文字训练成绩",
                 "consumes": [
                     "application/json"
@@ -124,6 +142,14 @@ const docTemplate = `{
                 ],
                 "summary": "提交颜色文字成绩",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cyour_token\u003e",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "成绩数据",
                         "name": "score",
@@ -143,6 +169,40 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/api/v1/login": {
+            "post": {
+                "description": "用户登录获取认证token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "认证"
+                ],
+                "summary": "用户登录",
+                "parameters": [
+                    {
+                        "description": "登录凭证",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routers.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
                     }
                 }
             }
@@ -189,6 +249,11 @@ const docTemplate = `{
         },
         "/api/v1/memory/scores": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "保存用户记忆训练成绩",
                 "consumes": [
                     "application/json"
@@ -201,6 +266,14 @@ const docTemplate = `{
                 ],
                 "summary": "提交记忆训练成绩",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cyour_token\u003e",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "成绩数据",
                         "name": "score",
@@ -220,6 +293,40 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/api/v1/register": {
+            "post": {
+                "description": "创建新用户账号",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "认证"
+                ],
+                "summary": "用户注册",
+                "parameters": [
+                    {
+                        "description": "注册信息",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routers.RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
                     }
                 }
             }
@@ -261,6 +368,11 @@ const docTemplate = `{
         },
         "/api/v1/schulte/scores": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "保存用户舒尔特表格游戏成绩",
                 "consumes": [
                     "application/json"
@@ -273,6 +385,14 @@ const docTemplate = `{
                 ],
                 "summary": "提交成绩",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cyour_token\u003e",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "成绩数据",
                         "name": "score",
@@ -310,6 +430,11 @@ const docTemplate = `{
         },
         "/api/v1/user/change": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "更新用户的基本信息",
                 "consumes": [
                     "application/json"
@@ -322,6 +447,14 @@ const docTemplate = `{
                 ],
                 "summary": "更新用户信息",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cyour_token\u003e",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "用户更新数据",
                         "name": "user",
@@ -344,6 +477,11 @@ const docTemplate = `{
         },
         "/api/v1/user/photo": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "上传并更新用户头像",
                 "consumes": [
                     "multipart/form-data"
@@ -356,6 +494,14 @@ const docTemplate = `{
                 ],
                 "summary": "上传用户头像",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cyour_token\u003e",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "用户ID",
@@ -383,6 +529,11 @@ const docTemplate = `{
         },
         "/api/v1/user/scores": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "获取用户在各个训练中的成绩记录",
                 "consumes": [
                     "application/json"
@@ -395,6 +546,14 @@ const docTemplate = `{
                 ],
                 "summary": "获取用户所有训练成绩",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cyour_token\u003e",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "用户ID",
@@ -415,6 +574,11 @@ const docTemplate = `{
         },
         "/api/v1/user/users": {
             "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "description": "获取用户的个人信息",
                 "consumes": [
                     "application/json"
@@ -427,6 +591,14 @@ const docTemplate = `{
                 ],
                 "summary": "获取用户基本信息",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cyour_token\u003e",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "string",
                         "description": "用户ID",
@@ -470,6 +642,21 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "routers.LoginRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
                     "type": "string"
                 }
             }
@@ -546,6 +733,25 @@ const docTemplate = `{
                 }
             }
         },
+        "routers.RegisterRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "description": "Email    string ` + "`" + `json:\"email\" binding:\"required,email\"` + "`" + `",
+                    "type": "string",
+                    "minLength": 6
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 3
+                }
+            }
+        },
         "routers.SchulteScoreRequest": {
             "type": "object",
             "required": [
@@ -610,6 +816,13 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`
