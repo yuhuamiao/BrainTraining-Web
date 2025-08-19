@@ -53,7 +53,7 @@ func SchulteMatrix(c *gin.Context) {
 // SubmitScore 提交舒尔特成绩
 // @Summary 提交成绩
 // @Description 保存用户舒尔特表格游戏成绩
-// @Tags 成绩管理
+// @Tags 舒尔特矩阵
 // @Accept application/json
 // @Produce application/json
 // @Security ApiKeyAuth

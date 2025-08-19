@@ -415,7 +415,7 @@ paths:
       - ApiKeyAuth: []
       summary: 提交成绩
       tags:
-      - 成绩管理
+      - 舒尔特矩阵
   /api/v1/user/change:
     post:
       consumes:

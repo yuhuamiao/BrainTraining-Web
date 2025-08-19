@@ -381,7 +381,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "成绩管理"
+                    "舒尔特矩阵"
                 ],
                 "summary": "提交成绩",
                 "parameters": [
