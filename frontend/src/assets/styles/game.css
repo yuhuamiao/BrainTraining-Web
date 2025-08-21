@@ -1,0 +1,35 @@
+/* 修正动画类名，与组件中的使用保持一致 */
+.passenger-enter-active.entering {
+  animation: enter 1s forwards;
+}
+
+.passenger-enter-active.exiting {
+  animation: exit 1s forwards;
+}
+
+/* 难度相关的动画速度 */
+.speed-easy { animation-duration: 1.5s; }
+.speed-medium { animation-duration: 1s; }
+.speed-hard { animation-duration: 0.6s; }
+
+@keyframes enter {
+  0% { 
+    transform: translateX(100px); 
+    opacity: 0; 
+  }
+  100% { 
+    transform: translateX(0); 
+    opacity: 1; 
+  }
+}
+
+@keyframes exit {
+  0% { 
+    transform: translateX(0); 
+    opacity: 1; 
+  }
+  100% { 
+    transform: translateX(-100px); 
+    opacity: 0; 
+  }
+}
