@@ -1,47 +1,34 @@
-// file: src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
-import { authGuard } from './guards'
-import HomePage from '../views/HomePage.vue'
-import BusNumberGame from '../views/BusNumberGame.vue'
-import Login from '@/views/Login.vue'
-import Register from '@/views/Register.vue'
+import { isTokenValid } from '@/utils/auth'
 
 const routes = [
-  {
-    path: '/',
-    component: HomePage,
-    meta: { requiresAuth: true } // 首页需要认证
-  },
-  // 公交游戏路由
-  {
-    path: '/bus-game',
-    name: 'BusGame',
-    component: BusNumberGame,
-    meta: { requiresAuth: true } // 游戏页面需要认证
-  },
-  // 登录页面
-  {
-    path: '/login',
-    name: 'Login',
-    component: Login,
-    meta: { requiresAuth: false } // 登录页面不需要认证
-  },
-  // 注册页面
-  {
-    path: '/register',
-    name: 'Register',
-    component: Register,
-    meta: { requiresAuth: false } // 注册页面不需要认证
-  },
-  // 可以继续添加其他训练的路由...
+  { path: '/', name: 'Home', component: () => import('@/views/HomePage.vue') },
+  { path: '/schulte', name: 'Schulte', component: () => import('@/views/SchulteGrid.vue') },
+  { path: '/color-words', name: 'ColorWords', component: () => import('@/views/ColorWords.vue') },
+  { path: '/memory', name: 'Memory', component: () => import('@/views/MemoryGame.vue') },
+  { path: '/bus-game', name: 'BusGame', component: () => import('@/views/BusNumberGame.vue') },
+  { path: '/sudoku', name: 'Sudoku', component: () => import('@/views/SudokuGame.vue') },
+  { path: '/progress', name: 'Progress', component: () => import('@/views/ProgressDashboard.vue') },
+  { path: '/login', name: 'Login', component: () => import('@/views/Login.vue'), meta: { public: true } },
+  { path: '/register', name: 'Register', component: () => import('@/views/Register.vue'), meta: { public: true } },
+  { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes
+  routes,
+  scrollBehavior: () => ({ top: 0 }),
 })
 
-// 添加路由守卫
-router.beforeEach(authGuard)
+router.beforeEach((to) => {
+  const authenticated = isTokenValid()
+  if (!to.meta.public && !authenticated) {
+    return { name: 'Login', query: { redirect: to.fullPath } }
+  }
+  if (to.meta.public && authenticated) {
+    return { name: 'Home' }
+  }
+  return true
+})
 
 export default router

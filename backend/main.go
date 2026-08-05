@@ -1,223 +1,160 @@
-// @title API 文档
+// @title Brain Training API
 // @version 1.0
-// @description 大脑训练网页开发
-// @termsOfService http://swagger.io/terms/
-
-// @license.name Apache 2.0
-// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
-
+// @description 大脑训练应用 API
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name Authorization
-
-// @host localhost:8000
-
 package main
 
 import (
 	"braintraining/backend/config"
 	"braintraining/backend/dao"
+	_ "braintraining/backend/docs"
 	"braintraining/backend/middleware"
 	"braintraining/backend/models"
 	"braintraining/backend/routers"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"gorm.io/gorm"
-	"log"
-	//"net/http"
-	_ "braintraining/backend/docs" // main 文件中导入 docs 包
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"gorm.io/gorm"
 )
 
-func initGin() *gin.Engine {
-	router := gin.Default()
+func setupRouter(db *gorm.DB) *gin.Engine {
+	router := gin.New()
+	router.Use(gin.Logger(), gin.Recovery(), corsMiddleware())
+	router.MaxMultipartMemory = 2 << 20
+	_ = router.SetTrustedProxies(nil)
+
 	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
+		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
-
+	router.GET("/health", func(c *gin.Context) {
+		sqlDB, err := db.DB()
+		if err != nil || sqlDB.Ping() != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	if err := os.MkdirAll("avatars", 0o755); err == nil {
+		router.Static("/uploads/avatars", "avatars")
+	}
 
-	router.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"app":     "Brain Training",
-			"version": "1.0",
-		})
-	})
-
+	registerAPIRoutes(router, db)
+	serveFrontend(router)
 	return router
 }
 
-//这是原来没有添加中间件的DAORoutes函数，所有的添加路由函数在routers包中的各个文件中
-//func DAORoutes(router *gin.Engine, db *gorm.DB) {
-//	//舒尔特矩阵
-//	schlteDAO := dao.NewSchulteDAO(db)
-//
-//	//多色文字
-//	ColorWordDAO := dao.NewColorWordDAO(db)
-//	ColorWordHandler := routers.NewColorWordHandler(ColorWordDAO)
-//
-//	//瞬间记忆
-//	MemoryDAO := dao.NewMemoryDAO(db)
-//	MemoryHandler := routers.NewMemoryHandler(MemoryDAO)
-//
-//	//公交车人数
-//	BusDAO := dao.NewBusDAO(db)
-//	BusHandler := routers.NewBusHandler(BusDAO)
-//
-//	//用户个人界面
-//	userDAO := dao.NewUserDAO(db)
-//	userHandler := routers.NewUserHandler(userDAO)
-//
-//	//添加路由
-//	routers.SchulteRoutes(router, schlteDAO)
-//	ColorWordHandler.ColorWordsRouter(router)
-//	MemoryHandler.MemoryRoutes(router)
-//	BusHandler.BusRoutes(router)
-//	userHandler.UserRoutes(router)
-//}
-
-func DAORoutes(router *gin.Engine, db *gorm.DB) {
-	// 初始化DAO
+func registerAPIRoutes(router *gin.Engine, db *gorm.DB) {
 	userDAO := dao.NewUserDAO(db)
-
-	// 创建认证中间件
-	authMiddleware := middleware.AuthMiddleware(userDAO)
-
-	// 公开路由 (不需要认证)
-	publicRoutes(router, db)
-
-	// 受保护路由 (需要认证)
-	protectedRoutes(router, db, authMiddleware)
-}
-
-// 公开路由
-func publicRoutes(router *gin.Engine, db *gorm.DB) {
-	// 登录注册
-	authHandler := routers.NewAuthHandler(dao.NewUserDAO(db))
+	authHandler := routers.NewAuthHandler(userDAO)
 	router.POST("/api/v1/login", authHandler.Login)
 	router.POST("/api/v1/register", authHandler.Register)
 
-	// 其他公开API (如获取训练题目)
-	//schulteDAO := dao.NewSchulteDAO(db)
-	router.GET("/api/v1/schulte/matrix", routers.SchulteMatrix) // 获取舒尔特矩阵
-
+	router.GET("/api/v1/schulte/matrix", routers.SchulteMatrix)
 	colorWordHandler := routers.NewColorWordHandler(dao.NewColorWordDAO(db))
-	router.GET("/api/v1/color_words/matrix", colorWordHandler.ColorWordsMatrix) // 获取颜色文字
+	router.GET("/api/v1/color_words/matrix", colorWordHandler.ColorWordsMatrix)
 	router.GET("/api/v1/color_words/color", colorWordHandler.ColorStream)
-
 	memoryHandler := routers.NewMemoryHandler(dao.NewMemoryDAO(db))
-	router.GET("/api/v1/memory/matrix", memoryHandler.MemoryMatrix) // 获取记忆矩阵
-}
+	router.GET("/api/v1/memory/matrix", memoryHandler.MemoryMatrix)
 
-// 受保护路由
-func protectedRoutes(router *gin.Engine, db *gorm.DB, authMiddleware gin.HandlerFunc) {
-	// 创建路由组并应用中间件
 	protected := router.Group("/api/v1")
-	protected.Use(authMiddleware)
-
-	// 舒尔特矩阵
-	schulteDAO := dao.NewSchulteDAO(db)
+	protected.Use(middleware.AuthMiddleware(userDAO))
 	protected.POST("/schulte/scores", func(c *gin.Context) {
-		routers.SubmitScore(c, schulteDAO)
+		routers.SubmitScore(c, dao.NewSchulteDAO(db))
 	})
-
-	// 多色文字
-	colorWordHandler := routers.NewColorWordHandler(dao.NewColorWordDAO(db))
 	protected.POST("/color_words/scores", colorWordHandler.SubmitScore)
-	//protected.GET("/color_words/color", colorWordHandler.ColorStream)
-
-	// 瞬间记忆
-	memoryHandler := routers.NewMemoryHandler(dao.NewMemoryDAO(db))
 	protected.POST("/memory/scores", memoryHandler.SubmitScore)
+	protected.POST("/bus/scores", routers.NewBusHandler(dao.NewBusDAO(db)).SubmitScore)
+	protected.POST("/sudoku/scores", routers.NewSudokuHandler(dao.NewSudokuDAO(db)).SubmitScore)
 
-	// 公交车人数
-	busHandler := routers.NewBusHandler(dao.NewBusDAO(db))
-	protected.POST("/bus/scores", busHandler.SubmitScore)
-
-	// 用户个人界面
-	userHandler := routers.NewUserHandler(dao.NewUserDAO(db))
+	userHandler := routers.NewUserHandler(userDAO)
 	userGroup := protected.Group("/user")
-	{
-		userGroup.GET("/scores", userHandler.GetUserScores)
-		userGroup.GET("/users", userHandler.GetUserInfo)
-		userGroup.POST("/change", userHandler.UpdateUserInfo)
-		userGroup.POST("/photo", userHandler.UploadAvatar)
+	userGroup.GET("/scores", userHandler.GetUserScores)
+	userGroup.GET("/me", userHandler.GetUserInfo)
+	userGroup.GET("/users", userHandler.GetUserInfo)
+	userGroup.PATCH("/me", userHandler.UpdateUserInfo)
+	userGroup.POST("/change", userHandler.UpdateUserInfo)
+	userGroup.POST("/photo", userHandler.UploadAvatar)
+}
+
+func AutoMigrate(db *gorm.DB) error {
+	return db.AutoMigrate(
+		&models.User{},
+		&models.SchulteScore{},
+		&models.ColorWordRecord{},
+		&models.ColorWordConfig{},
+		&models.MemoryRecord{},
+		&models.BusRecord{},
+		&models.SudokuRecord{},
+	)
+}
+
+func corsMiddleware() gin.HandlerFunc {
+	allowedOrigin := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGIN"))
+	return func(c *gin.Context) {
+		if allowedOrigin != "" && c.GetHeader("Origin") == allowedOrigin {
+			c.Header("Access-Control-Allow-Origin", allowedOrigin)
+			c.Header("Vary", "Origin")
+			c.Header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+			c.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
+		}
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+		c.Next()
 	}
 }
 
-func AutoMigrate(db *gorm.DB) error { //添加数据库
-	//舒尔特矩阵
-	if err := db.AutoMigrate(&models.SchulteScore{}); err != nil {
-		log.Fatalf("SchulteScore自动迁移失败：%v", err)
-		return err
-	} else {
-		log.Println("SchulteScore表创建/迁移成功")
+func serveFrontend(router *gin.Engine) {
+	frontendDir := strings.TrimSpace(os.Getenv("FRONTEND_DIR"))
+	if frontendDir == "" {
+		frontendDir = "./static"
+	}
+	indexPath := filepath.Join(frontendDir, "index.html")
+	if _, err := os.Stat(indexPath); err != nil {
+		router.GET("/", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"app": "Brain Training", "version": "1.0"})
+		})
+		return
 	}
 
-	//多色文字
-	if err := db.AutoMigrate(&models.ColorWordRecord{}); err != nil {
-		log.Fatalf("ColorWordRecord自动迁移失败：%v", err)
-		return err
-	} else {
-		log.Println("ColorWordRecord表创建/迁移成功")
-	}
-
-	//瞬间记忆
-	if err := db.AutoMigrate(&models.MemoryRecord{}); err != nil {
-		log.Fatalf("MemoryRecord自动迁移失败：%v", err)
-		return err
-	} else {
-		log.Println("MemoryRecord表创建/迁移成功")
-	}
-
-	//公交车人数
-	if err := db.AutoMigrate(&models.BusRecord{}); err != nil {
-		log.Fatalf("BusRecord：%v", err)
-		return err
-	} else {
-		log.Println("BusRecord表创建/迁移成功")
-	}
-
-	//用户个人界面
-	if err := db.AutoMigrate(&models.User{}); err != nil {
-		log.Fatalf("User：%v", err)
-		return err
-	} else {
-		log.Println("User表创建/迁移成功")
-	}
-	return nil
+	router.Static("/assets", filepath.Join(frontendDir, "assets"))
+	router.GET("/", func(c *gin.Context) { c.File(indexPath) })
+	router.NoRoute(func(c *gin.Context) {
+		if c.Request.Method == http.MethodGet && !strings.HasPrefix(c.Request.URL.Path, "/api/") {
+			c.File(indexPath)
+			return
+		}
+		c.JSON(http.StatusNotFound, gin.H{"error": "NotFound", "message": "接口不存在"})
+	})
 }
 
 func main() {
 	_ = godotenv.Load()
 
-	r := initGin()
-
 	db, err := config.InitDB()
 	if err != nil {
-		log.Fatalf("数据库初始化失败：%v", err) // 打印实际错误
+		log.Fatalf("数据库初始化失败: %v", err)
 	}
-
-	// 自动迁移
 	if err := AutoMigrate(db); err != nil {
-		log.Fatalf("自动迁移失败：%v", err)
-	} else {
-		log.Println("表创建/迁移成功")
+		log.Fatalf("数据库迁移失败: %v", err)
 	}
 
-	DAORoutes(r, db)
-
-	r.GET("/health", func(c *gin.Context) {
-		if err := db.Exec("SELECT 1").Error; err != nil {
-			c.JSON(500, gin.H{"db": "unhealthy"})
-			return
-		}
-		c.JSON(200, gin.H{"status": "ok"})
-	})
-	if err := r.Run("0.0.0.0:8000"); err != nil {
-		panic(err) // 或更优雅的错误处理
+	port := strings.TrimSpace(os.Getenv("PORT"))
+	if port == "" {
+		port = "8000"
+	}
+	if err := setupRouter(db).Run("0.0.0.0:" + port); err != nil {
+		log.Fatal(err)
 	}
 }

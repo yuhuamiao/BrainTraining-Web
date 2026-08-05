@@ -1,80 +1,63 @@
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { login, register, getUserInfo } from '@/services/api'
-import { setToken, removeToken, getToken } from '@/utils/auth'
+import { getMe, login, register } from '@/services/api'
+import {
+  getStoredUser,
+  getToken,
+  removeStoredUser,
+  removeToken,
+  setStoredUser,
+  setToken,
+} from '@/utils/auth'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(getToken())
-  const user = ref(null)
-  const isAuthenticated = computed(() => !!token.value)
+  const user = ref(getStoredUser())
+  const isAuthenticated = computed(() => Boolean(token.value))
 
-  const setUser = (userData) => {
+  function setAuth(authToken, userData) {
+    token.value = authToken
     user.value = userData
+    setToken(authToken)
+    setStoredUser(userData)
   }
 
-  const setAuthToken = (newToken) => {
-    token.value = newToken
-    setToken(newToken)
+  function setUser(userData) {
+    user.value = userData
+    setStoredUser(userData)
   }
 
-  const clearAuth = () => {
+  function clearAuth() {
     token.value = null
     user.value = null
     removeToken()
+    removeStoredUser()
   }
 
-  const loginUser = async (credentials) => {
+  async function loginUser(credentials) {
     try {
       const response = await login(credentials)
-      if (response.success) {
-        setAuthToken(response.token)
-        setUser(response.user)
-        return { success: true }
-      }
+      setAuth(response.token, response.user)
+      return { success: true }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || '登录失败' 
-      }
+      return { success: false, error: error.response?.data?.message || '登录失败' }
     }
   }
 
-  const registerUser = async (userData) => {
+  async function registerUser(userData) {
     try {
       const response = await register(userData)
       return { success: response.success, message: response.message }
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || '注册失败' 
-      }
+      return { success: false, error: error.response?.data?.message || '注册失败' }
     }
   }
 
-  const fetchUserInfo = async (userId) => {
-    try {
-      const userInfo = await getUserInfo(userId)
-      setUser(userInfo)
-      return userInfo
-    } catch (error) {
-      console.error('获取用户信息失败:', error)
-      // 如果token无效，清除认证状态
-      if (error.response?.status === 401) {
-        clearAuth()
-      }
-      throw error
-    }
+  async function refreshUser() {
+    const response = await getMe()
+    setUser(response)
+    return response
   }
 
-  return {
-    token,
-    user,
-    isAuthenticated,
-    setUser,
-    setAuthToken,
-    clearAuth,
-    loginUser,
-    registerUser,
-    fetchUserInfo
-  }
+  return { token, user, isAuthenticated, setUser, clearAuth, loginUser, registerUser, refreshUser }
 })

@@ -1,545 +1,171 @@
 <template>
-    <div class="color-words-training">
-      <div class="header">
-        <h2>多色文字训练</h2>
-        <div class="stats">
-          <div class="timer">时间: {{ formatTime(remainingTime) }}</div>
-          <div class="score">得分: {{ score }}</div>
-          <div class="accuracy">准确率: {{ accuracy }}%</div>
+  <section class="game-page">
+    <div class="game-topline"><router-link class="back-link" to="/">返回训练</router-link><span class="eyebrow">抑制控制 · 30 秒</span></div>
+    <div class="game-surface">
+      <header class="game-header">
+        <h1>多色文字</h1>
+        <div class="game-meta">
+          <div><span>正确</span><strong>{{ correct }}</strong></div>
+          <div><span>剩余</span><strong>{{ remaining }}s</strong></div>
+        </div>
+      </header>
+
+      <div v-if="phase === 'setup'" class="game-body game-setup">
+        <div class="setup-inner">
+          <div class="stroop-sample" aria-hidden="true"><i>红</i><i>蓝</i><i>绿</i></div>
+          <h2>判断文字的颜色</h2>
+          <p>忽略文字含义，选择当前高亮文字的实际颜色。</p>
+          <div class="segmented difficulty-control">
+            <button v-for="item in difficulties" :key="item.value" :class="{ active: difficulty === item.value }" type="button" @click="difficulty = item.value">{{ item.label }}</button>
+          </div>
+          <button class="button start-button" type="button" :disabled="loading" @click="startGame">{{ loading ? '准备中…' : '开始训练' }}</button>
+          <p v-if="error" class="status-line form-error">{{ error }}</p>
         </div>
       </div>
-  
-      <div v-if="!gameStarted" class="setup-screen">
-        <div class="difficulty-selector">
-          <h3>选择难度</h3>
-          <div class="difficulty-options">
-            <button 
-              v-for="level in difficultyLevels" 
-              :key="level.value" 
-              @click="selectDifficulty(level.value)"
-              :class="{ active: selectedDifficulty === level.value }"
-            >
-              {{ level.label }}
-            </button>
-          </div>
+
+      <div v-else-if="phase === 'playing'" class="game-body color-play">
+        <div class="color-grid" :style="{ gridTemplateColumns: `repeat(${matrix.length}, 1fr)` }">
+          <div v-for="(cell, index) in flatMatrix" :key="index" :class="['color-cell', { active: index === activeCell }]" :style="index === activeCell ? { color: colorMap[currentColor] } : undefined">{{ cell.word }}</div>
         </div>
-        <button class="start-button" @click="startGame">开始训练</button>
-      </div>
-  
-      <div v-else class="game-screen">
-        <div class="color-matrix">
-          <div 
-            v-for="(row, rowIndex) in matrix" 
-            :key="rowIndex" 
-            class="matrix-row"
-          >
-            <div
-              v-for="(cell, colIndex) in row"
-              :key="colIndex"
-              class="color-cell"
-              :class="{ highlighted: isHighlighted(rowIndex, colIndex) }"
-              :style="getCellStyle(rowIndex, colIndex)"
-            >
-              {{ cell.word }}
-            </div>
-          </div>
-        </div>
-  
-        <div class="color-buttons">
-          <button
-            v-for="color in colorOptions"
-            :key="color.value"
-            @click="checkAnswer(color.value)"
-            :disabled="!isAnswering || gameEnded"
-            class="color-button"
-            :style="{ backgroundColor: getButtonColor(color.value) }"
-          >
-            {{ color.label }}
+        <div class="answer-colors">
+          <button v-for="color in colors" :key="color.value" type="button" :disabled="!answering" @click="answer(color.value)">
+            <i :style="{ background: colorMap[color.value] }"></i>{{ color.label }}
           </button>
         </div>
-  
-        <div v-if="gameEnded" class="results">
-          <h3>训练结束!</h3>
-          <p>最终得分: {{ score }}</p>
-          <p>准确率: {{ accuracy }}%</p>
-          <button @click="restartGame">再试一次</button>
-          <button @click="submitScore">保存成绩</button>
+        <p class="status-line">{{ feedback }}</p>
+      </div>
+
+      <div v-else class="game-body game-result">
+        <div class="result-inner">
+          <p class="eyebrow">Session complete</p><h2>抑制控制训练完成</h2>
+          <div class="result-number">{{ accuracy }}%</div>
+          <p>正确 {{ correct }} / {{ questions }} · {{ saveMessage }}</p>
+          <div class="result-actions"><button class="button" type="button" @click="reset">再练一次</button><router-link class="button button-secondary" to="/">选择其他训练</router-link></div>
         </div>
       </div>
-  
-      <div v-if="loading" class="loading-overlay">
-        <div class="spinner"></div>
-        <p>加载中...</p>
-      </div>
     </div>
-  </template>
-  
-  <script>
-  import { ref, computed, onMounted, onUnmounted } from 'vue'
-  import axios from 'axios'
-  
-  export default {
-    name: 'ColorWords',
-    setup() {
-      // 游戏状态
-      const gameStarted = ref(false)
-      const gameEnded = ref(false)
-      const isAnswering = ref(false)
-      const loading = ref(false)
-      
-      // 游戏数据
-      const matrix = ref([])
-      const selectedDifficulty = ref('easy')
-      const currentColor = ref('')
-      const highlightedCell = ref({ row: -1, col: -1 })
-      
-      // 统计数据
-      const score = ref(0)
-      const totalQuestions = ref(0)
-      const correctAnswers = ref(0)
-      const remainingTime = ref(0)
-      const timerInterval = ref(null)
-      const gameDuration = 60 // 60秒游戏时间
-      
-      // WebSocket连接
-      const ws = ref(null)
-      const isConnected = ref(false)
-      
-      // 难度选项
-      const difficultyLevels = [
-        { value: 'easy', label: '简单' },
-        { value: 'medium', label: '中等' },
-        { value: 'hard', label: '困难' }
-      ]
-      
-      // 颜色选项
-      const colorOptions = [
-        { value: 'red', label: '红' },
-        { value: 'blue', label: '蓝' },
-        { value: 'green', label: '绿' },
-        { value: 'yellow', label: '黄' },
-        { value: 'black', label: '黑' }
-      ]
-      
-      // 计算准确率
-      const accuracy = computed(() => {
-        if (totalQuestions.value === 0) return 0
-        return Math.round((correctAnswers.value / totalQuestions.value) * 100)
-      })
-      
-      // 获取矩阵数据
-      const fetchMatrix = async () => {
-        try {
-          loading.value = true
-          const response = await axios.get('/api/v1/color_words/matrix', {
-            params: { difficulty: selectedDifficulty.value }
-          })
-          matrix.value = response.data.matrix
-        } catch (error) {
-          console.error('获取矩阵失败:', error)
-          alert('获取训练数据失败，请重试')
-        } finally {
-          loading.value = false
-        }
-      }
-      
-      // 建立WebSocket连接
-      const connectWebSocket = () => {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-        const wsUrl = `${protocol}//${window.location.host}/api/v1/color_words/color`
-        
-        ws.value = new WebSocket(wsUrl)
-        
-        ws.value.onopen = () => {
-          console.log('WebSocket连接已建立')
-          isConnected.value = true
-        }
-        
-        ws.value.onmessage = (event) => {
-          const data = JSON.parse(event.data)
-          currentColor.value = data.color
-          highlightRandomCell()
-          isAnswering.value = true
-          
-          // 5秒后自动隐藏高亮，如果用户没有回答则记为错误
-          setTimeout(() => {
-            if (isAnswering.value) {
-              isAnswering.value = false
-              totalQuestions.value++
-            }
-          }, 5000)
-        }
-        
-        ws.value.onclose = () => {
-          console.log('WebSocket连接已关闭')
-          isConnected.value = false
-        }
-        
-        ws.value.onerror = (error) => {
-          console.error('WebSocket错误:', error)
-          isConnected.value = false
-        }
-      }
-      
-      // 随机高亮一个单元格
-      const highlightRandomCell = () => {
-        const rows = matrix.value.length
-        const cols = matrix.value[0].length
-        const row = Math.floor(Math.random() * rows)
-        const col = Math.floor(Math.random() * cols)
-        
-        highlightedCell.value = { row, col }
-      }
-      
-      // 检查单元格是否高亮
-      const isHighlighted = (row, col) => {
-        return highlightedCell.value.row === row && highlightedCell.value.col === col && isAnswering.value
-      }
-      
-      // 获取单元格样式
-      const getCellStyle = (row, col) => {
-        if (isHighlighted(row, col)) {
-          return { color: currentColor.value }
-        }
-        return { color: 'gray' }
-      }
-      
-      // 获取按钮颜色
-      const getButtonColor = (colorValue) => {
-        const colorMap = {
-          red: '#ff4757',
-          blue: '#3742fa',
-          green: '#2ed573',
-          yellow: '#ffa502',
-          black: '#2f3542'
-        }
-        return colorMap[colorValue] || 'gray'
-      }
-      
-      // 检查答案
-      const checkAnswer = (selectedColor) => {
-        if (!isAnswering.value) return
-        
-        totalQuestions.value++
-        if (selectedColor === currentColor.value) {
-          score.value += 10
-          correctAnswers.value++
-        }
-        
-        isAnswering.value = false
-      }
-      
-      // 开始游戏
-      const startGame = async () => {
-        await fetchMatrix()
-        connectWebSocket()
-        gameStarted.value = true
-        gameEnded.value = false
-        score.value = 0
-        totalQuestions.value = 0
-        correctAnswers.value = 0
-        remainingTime.value = gameDuration
-        
-        // 启动计时器
-        timerInterval.value = setInterval(() => {
-          remainingTime.value--
-          
-          if (remainingTime.value <= 0) {
-            endGame()
-          }
-        }, 1000)
-      }
-      
-      // 结束游戏
-      const endGame = () => {
-        clearInterval(timerInterval.value)
-        gameEnded.value = true
-        
-        // 关闭WebSocket连接
-        if (ws.value) {
-          ws.value.close()
-        }
-      }
-      
-      // 重新开始游戏
-      const restartGame = () => {
-        gameStarted.value = false
-        gameEnded.value = false
-        isAnswering.value = false
-      }
-      
-      // 提交成绩
-      const submitScore = async () => {
-        try {
-          loading.value = true
-          
-          // 假设我们有用户ID，实际应用中应从认证信息获取
-          const userId = localStorage.getItem('userId') || 'anonymous'
-          
-          const scoreData = {
-            userId: userId,
-            success_num: correctAnswers.value,
-            level: selectedDifficulty.value,
-            accuracy: accuracy.value / 100,
-            training_num: totalQuestions.value
-          }
-          
-          await axios.post('/api/v1/color_words/scores', scoreData)
-          alert('成绩保存成功!')
-        } catch (error) {
-          console.error('提交成绩失败:', error)
-          alert('保存成绩失败，请重试')
-        } finally {
-          loading.value = false
-        }
-      }
-      
-      // 选择难度
-      const selectDifficulty = (difficulty) => {
-        selectedDifficulty.value = difficulty
-      }
-      
-      // 格式化时间显示
-      const formatTime = (seconds) => {
-        const mins = Math.floor(seconds / 60)
-        const secs = seconds % 60
-        return `${mins}:${secs < 10 ? '0' : ''}${secs}`
-      }
-      
-      // 组件卸载时清理
-      onUnmounted(() => {
-        if (timerInterval.value) {
-          clearInterval(timerInterval.value)
-        }
-        
-        if (ws.value) {
-          ws.value.close()
-        }
-      })
-      
-      return {
-        gameStarted,
-        gameEnded,
-        isAnswering,
-        loading,
-        matrix,
-        selectedDifficulty,
-        score,
-        remainingTime,
-        accuracy,
-        difficultyLevels,
-        colorOptions,
-        isHighlighted,
-        getCellStyle,
-        getButtonColor,
-        checkAnswer,
-        startGame,
-        restartGame,
-        submitScore,
-        selectDifficulty,
-        formatTime
-      }
-    }
+  </section>
+</template>
+
+<script setup>
+import { computed, onBeforeUnmount, ref } from 'vue'
+import { apiMessage, getColorMatrix, submitColorWordScore } from '@/services/api'
+
+const phase = ref('setup')
+const difficulty = ref('easy')
+const matrix = ref([])
+const loading = ref(false)
+const error = ref('')
+const remaining = ref(30)
+const currentColor = ref('red')
+const activeCell = ref(-1)
+const answering = ref(false)
+const correct = ref(0)
+const questions = ref(0)
+const feedback = ref('等待第一个颜色')
+const saveMessage = ref('正在保存成绩…')
+const flatMatrix = computed(() => matrix.value.flat())
+const accuracy = computed(() => questions.value ? Math.round(correct.value / questions.value * 100) : 0)
+const difficulties = [{ value: 'easy', label: '简单' }, { value: 'medium', label: '中等' }, { value: 'hard', label: '困难' }]
+const colors = [{ value: 'red', label: '红' }, { value: 'blue', label: '蓝' }, { value: 'green', label: '绿' }, { value: 'yellow', label: '黄' }, { value: 'black', label: '黑' }]
+const colorMap = { red: '#d6534d', blue: '#356da0', green: '#2e7a52', yellow: '#c58e16', black: '#202724' }
+let socket = null
+let timerId = null
+let fallbackId = null
+let fallbackGuard = null
+
+async function startGame() {
+  cleanup()
+  loading.value = true
+  error.value = ''
+  try {
+    matrix.value = (await getColorMatrix(difficulty.value)).matrix
+  } catch (requestError) {
+    error.value = apiMessage(requestError, '无法获取文字矩阵')
+    loading.value = false
+    return
   }
-  </script>
-  
-  <style scoped>
-  .color-words-training {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
-    font-family: 'Arial', sans-serif;
+  loading.value = false
+  phase.value = 'playing'
+  remaining.value = 30
+  correct.value = 0
+  questions.value = 0
+  feedback.value = '等待第一个颜色'
+  saveMessage.value = '正在保存成绩…'
+  connectStream()
+  timerId = window.setInterval(() => {
+    remaining.value -= 1
+    if (remaining.value <= 0) finish()
+  }, 1000)
+}
+
+function connectStream() {
+  const configured = import.meta.env.VITE_API_BASE_URL
+  let url
+  if (configured?.startsWith('http')) {
+    const apiUrl = new URL(configured)
+    apiUrl.protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+    apiUrl.pathname = `${apiUrl.pathname.replace(/\/$/, '')}/color_words/color`
+    url = apiUrl.toString()
+  } else {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    url = `${protocol}//${window.location.host}/api/v1/color_words/color`
   }
-  
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-  
-  .stats {
-    display: flex;
-    gap: 15px;
-  }
-  
-  .setup-screen {
-    text-align: center;
-    padding: 40px 0;
-  }
-  
-  .difficulty-selector {
-    margin-bottom: 30px;
-  }
-  
-  .difficulty-options {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 15px;
-  }
-  
-  .difficulty-options button {
-    padding: 10px 20px;
-    border: 2px solid #ddd;
-    background: white;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-  
-  .difficulty-options button.active {
-    border-color: #3498db;
-    background: #3498db;
-    color: white;
-  }
-  
-  .start-button {
-    padding: 12px 30px;
-    background: #2ecc71;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 18px;
-    cursor: pointer;
-    transition: background 0.3s;
-  }
-  
-  .start-button:hover {
-    background: #27ae60;
-  }
-  
-  .color-matrix {
-    margin: 20px 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .matrix-row {
-    display: flex;
-  }
-  
-  .color-cell {
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 4px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    font-size: 20px;
-    font-weight: bold;
-    transition: all 0.3s;
-  }
-  
-  .color-cell.highlighted {
-    border-color: #3498db;
-    box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
-    transform: scale(1.05);
-  }
-  
-  .color-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    margin: 30px 0;
-  }
-  
-  .color-button {
-    padding: 12px 25px;
-    border: none;
-    border-radius: 5px;
-    color: white;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: transform 0.2s, opacity 0.2s;
-  }
-  
-  .color-button:hover:not(:disabled) {
-    transform: translateY(-2px);
-  }
-  
-  .color-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-  
-  .results {
-    text-align: center;
-    padding: 20px;
-    border: 2px solid #2ecc71;
-    border-radius: 10px;
-    margin-top: 20px;
-  }
-  
-  .results button {
-    margin: 10px;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-  
-  .results button:first-child {
-    background: #3498db;
-    color: white;
-  }
-  
-  .results button:last-child {
-    background: #2ecc71;
-    color: white;
-  }
-  
-  .loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.8);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-  }
-  
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #3498db;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 10px;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  
-  @media (max-width: 600px) {
-    .color-cell {
-      width: 50px;
-      height: 50px;
-      font-size: 16px;
-    }
-    
-    .color-buttons {
-      flex-wrap: wrap;
-    }
-    
-    .header {
-      flex-direction: column;
-      gap: 10px;
-    }
-    
-    .stats {
-      justify-content: center;
-    }
-  }
-  </style>
+  socket = new WebSocket(url)
+  socket.onmessage = (event) => nextPrompt(JSON.parse(event.data).color)
+  socket.onerror = startFallback
+  socket.onclose = () => { if (phase.value === 'playing' && questions.value === 0) startFallback() }
+  fallbackGuard = window.setTimeout(() => { if (questions.value === 0) startFallback() }, 1800)
+}
+
+function startFallback() {
+  if (fallbackId || phase.value !== 'playing') return
+  socket?.close()
+  nextPrompt(randomColor())
+  fallbackId = window.setInterval(() => nextPrompt(randomColor()), 1000)
+}
+
+function randomColor() { return colors[Math.floor(Math.random() * colors.length)].value }
+function nextPrompt(color) {
+  if (phase.value !== 'playing' || !flatMatrix.value.length) return
+  currentColor.value = colorMap[color] ? color : randomColor()
+  activeCell.value = Math.floor(Math.random() * flatMatrix.value.length)
+  answering.value = true
+  questions.value += 1
+  feedback.value = '选择文字显示的颜色'
+}
+function answer(value) {
+  if (!answering.value) return
+  answering.value = false
+  if (value === currentColor.value) { correct.value += 1; feedback.value = '正确' }
+  else feedback.value = '继续专注颜色'
+}
+
+async function finish() {
+  if (phase.value !== 'playing') return
+  cleanup()
+  phase.value = 'result'
+  try {
+    await submitColorWordScore({ successNum: correct.value, trainingNum: Math.max(questions.value, 1), accuracy: questions.value ? correct.value / questions.value : 0, level: difficulty.value })
+    saveMessage.value = '成绩已保存'
+  } catch (requestError) { saveMessage.value = apiMessage(requestError, '成绩暂未保存') }
+}
+function reset() { phase.value = 'setup'; remaining.value = 30; error.value = '' }
+function cleanup() { window.clearInterval(timerId); window.clearInterval(fallbackId); window.clearTimeout(fallbackGuard); fallbackId = null; socket?.close(); socket = null }
+onBeforeUnmount(cleanup)
+</script>
+
+<style scoped>
+.stroop-sample { display: flex; justify-content: center; gap: 10px; margin-bottom: 24px; font-size: 34px; font-weight: 850; }
+.stroop-sample i { font-style: normal; }.stroop-sample i:nth-child(1) { color: var(--blue); }.stroop-sample i:nth-child(2) { color: var(--coral); }.stroop-sample i:nth-child(3) { color: var(--green); }
+.difficulty-control { margin-bottom: 18px; }.start-button { display: flex; margin: 0 auto; }
+.color-play { display: grid; justify-items: center; }
+.color-grid { width: min(100%, 580px); aspect-ratio: 1; display: grid; gap: 4px; }
+.color-cell { min-width: 0; display: grid; place-items: center; border: 1px solid #d5dbd6; border-radius: 3px; background: #f7f8f6; color: #adb5af; font-size: clamp(12px, 2.3vw, 21px); font-weight: 850; }
+.color-cell.active { z-index: 1; border: 3px solid currentColor; background: white; box-shadow: 0 5px 14px rgba(23,32,29,.12); transform: scale(1.08); }
+.answer-colors { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 24px; }
+.answer-colors button { min-width: 86px; min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); border-radius: 5px; background: #eef1ee; color: var(--ink); font-weight: 750; }
+.answer-colors button:hover:not(:disabled) { border-color: #aab4ad; background: white; }.answer-colors button:disabled { opacity: .46; }
+.answer-colors i { width: 12px; aspect-ratio: 1; border-radius: 50%; }
+@media (max-width: 600px) { .color-grid { gap: 2px; } .answer-colors button { min-width: 61px; padding: 0 9px; } }
+</style>

@@ -22,8 +22,8 @@ func AuthMiddleware(userDAO *dao.UserDAO) gin.HandlerFunc {
 		}
 
 		// 2. 验证token格式: Bearer <token>
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
+		parts := strings.Fields(authHeader)
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error":   "InvalidTokenFormat",
 				"message": "token格式应为: Bearer <token>",

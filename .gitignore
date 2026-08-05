@@ -1,2 +1,11 @@
-# 忽略 .env 环境文件
+# Environment and local runtime data
 .env
+backend/.env
+backend/data/
+backend/avatars/
+backend/tmp/
+
+# Build and tool caches
+.gocache/
+backend/braintraining*
+frontend/dist/

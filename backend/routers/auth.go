@@ -8,7 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"net/http"
+	"strings"
 	"time"
+
+	"errors"
+	"gorm.io/gorm"
 )
 
 type AuthHandler struct {
@@ -58,11 +62,17 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	// 检查用户名是否已存在
+	req.Username = strings.TrimSpace(req.Username)
 	if _, err := h.UserDAO.GetUserByUsername(req.Username); err == nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "UsernameExists",
 			Message: "用户名已存在",
+		})
+		return
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:   "DatabaseError",
+			Message: "检查用户名失败",
 		})
 		return
 	}
@@ -141,7 +151,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	// 更新最后登录时间
 	user.LastLoginAt = time.Now().Unix()
-	if err := h.UserDAO.UpdateUser(user); err != nil {
+	if err := h.UserDAO.UpdateLastLogin(user.UserID, user.LastLoginAt); err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error:   "DatabaseError",
 			Message: "更新登录状态失败",

@@ -1,46 +1,31 @@
-// file: src/utils/auth.js
-// 存储和获取token
-export const setToken = (token) => {
-    localStorage.setItem('token', token)
+const TOKEN_KEY = 'brain-training-token'
+const USER_KEY = 'brain-training-user'
+
+export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token)
+export const getToken = () => localStorage.getItem(TOKEN_KEY)
+export const removeToken = () => localStorage.removeItem(TOKEN_KEY)
+export const setStoredUser = (user) => localStorage.setItem(USER_KEY, JSON.stringify(user))
+
+export function getStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem(USER_KEY))
+  } catch {
+    return null
   }
-  
-  export const getToken = () => {
-    return localStorage.getItem('token')
+}
+
+export const removeStoredUser = () => localStorage.removeItem(USER_KEY)
+
+export function isTokenValid() {
+  const token = getToken()
+  if (!token) return false
+  try {
+    const encoded = token.split('.')[1]
+    if (!encoded) return false
+    const normalized = encoded.replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(normalized))
+    return Number(payload.exp) * 1000 > Date.now()
+  } catch {
+    return false
   }
-  
-  export const removeToken = () => {
-    localStorage.removeItem('token')
-  }
-  
-  // 存储和获取用户信息
-  export const setStoredUser = (user) => {
-    localStorage.setItem('user', JSON.stringify(user))
-  }
-  
-  export const getStoredUser = () => {
-    const userStr = localStorage.getItem('user')
-    return userStr ? JSON.parse(userStr) : null
-  }
-  
-  export const removeStoredUser = () => {
-    localStorage.removeItem('user')
-  }
-  
-  // 检查token是否有效
-  export const isTokenValid = () => {
-    const token = getToken()
-    if (!token) return false
-    
-    try {
-      // 简单检查token格式，实际应该解析JWT检查过期时间
-      const parts = token.split('.')
-      if (parts.length !== 3) return false
-      
-      // 检查过期时间
-      const payload = JSON.parse(atob(parts[1]))
-      const exp = payload.exp * 1000 // 转换为毫秒
-      return Date.now() < exp
-    } catch (error) {
-      return false
-    }
-  }
+}

@@ -4,9 +4,9 @@ import "gorm.io/gorm"
 
 type BusRecord struct {
 	gorm.Model
-	UserID      string  `gorm:"size:36;not null;index"` // 用户ID
-	SuccessNum  int     `gorm:"check:success_num"`
-	Level       string  `gorm:"size:10;check:level IN ('easy','medium','hard')"`
-	Accuracy    float64 `gorm:"not null"` // 准确率(SuccessNum/TotalNum)
-	TrainingNum int     `gorm:"check:training_num BETWEEN 1 AND 6"`
+	UserID      string  `json:"-" gorm:"size:36;not null;index"`
+	SuccessNum  int     `json:"successNum" gorm:"not null"`
+	Level       string  `json:"level" gorm:"size:10;not null"`
+	Accuracy    float64 `json:"accuracy" gorm:"not null"`
+	TrainingNum int     `json:"trainingNum" gorm:"not null"`
 }

@@ -9,4 +9,13 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'), // 确保这行存在
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        ws: true,
+      },
+    },
+  },
 })

@@ -1,12 +1,13 @@
 package utils
 
 import (
+	"errors"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
 )
-
-var jwtSecret = []byte("your-secret-key") // 从配置中读取
 
 type Claims struct {
 	UserID string `json:"userId"`
@@ -29,13 +30,16 @@ func GenerateToken(userID string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString(secret())
 }
 
 // ParseToken 解析JWT token
 func ParseToken(tokenString string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return jwtSecret, nil
+		if token.Method != jwt.SigningMethodHS256 {
+			return nil, errors.New("unexpected signing method")
+		}
+		return secret(), nil
 	})
 
 	if err != nil {
@@ -47,4 +51,11 @@ func ParseToken(tokenString string) (*Claims, error) {
 	}
 
 	return nil, jwt.ErrInvalidKey
+}
+
+func secret() []byte {
+	if configured := strings.TrimSpace(os.Getenv("JWT_SECRET")); configured != "" {
+		return []byte(configured)
+	}
+	return []byte("brain-training-local-development-secret")
 }

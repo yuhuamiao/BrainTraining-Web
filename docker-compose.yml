@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-local-docker-secret-change-before-production}
+    volumes:
+      - brain-training-data:/app/data
+      - brain-training-avatars:/app/avatars
+    restart: unless-stopped
+
+volumes:
+  brain-training-data:
+  brain-training-avatars:

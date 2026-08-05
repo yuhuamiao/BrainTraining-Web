@@ -9,12 +9,7 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "termsOfService": "http://swagger.io/terms/",
         "contact": {},
-        "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-        },
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
@@ -53,7 +48,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/routers.BusScoreRequest"
+                            "$ref": "#/definitions/routers.TrainingScoreRequest"
                         }
                     }
                 ],
@@ -156,7 +151,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/routers.ScoreRequest"
+                            "$ref": "#/definitions/routers.TrainingScoreRequest"
                         }
                     }
                 ],
@@ -280,7 +275,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/routers.MemoryScoreRequest"
+                            "$ref": "#/definitions/routers.TrainingScoreRequest"
                         }
                     }
                 ],
@@ -428,8 +423,86 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/user/change": {
+        "/api/v1/sudoku/scores": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "保存当前用户的数独完成情况",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "数独挑战"
+                ],
+                "summary": "提交数独成绩",
+                "parameters": [
+                    {
+                        "description": "成绩数据",
+                        "name": "score",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routers.SudokuScoreRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            }
+        },
+        "/api/v1/user/me": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "获取用户的个人信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户"
+                ],
+                "summary": "获取用户基本信息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cyour_token\u003e",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    }
+                }
+            },
+            "patch": {
                 "security": [
                     {
                         "ApiKeyAuth": []
@@ -503,13 +576,6 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "用户ID",
-                        "name": "userId",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
                         "type": "file",
                         "description": "头像文件",
                         "name": "avatar",
@@ -553,58 +619,6 @@ const docTemplate = `{
                         "name": "Authorization",
                         "in": "header",
                         "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "用户ID",
-                        "name": "userId",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    }
-                }
-            }
-        },
-        "/api/v1/user/users": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "获取用户的个人信息",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "用户"
-                ],
-                "summary": "获取用户基本信息",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "default": "Bearer \u003cyour_token\u003e",
-                        "description": "Bearer Token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "用户ID",
-                        "name": "userId",
-                        "in": "query",
-                        "required": true
                     }
                 ],
                 "responses": {
@@ -619,33 +633,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "routers.BusScoreRequest": {
-            "type": "object",
-            "required": [
-                "accuracy",
-                "level",
-                "successNum",
-                "trainingNum",
-                "userId"
-            ],
-            "properties": {
-                "accuracy": {
-                    "type": "number"
-                },
-                "level": {
-                    "type": "string"
-                },
-                "successNum": {
-                    "type": "integer"
-                },
-                "trainingNum": {
-                    "type": "integer"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
         "routers.LoginRequest": {
             "type": "object",
             "required": [
@@ -706,33 +693,6 @@ const docTemplate = `{
                 }
             }
         },
-        "routers.MemoryScoreRequest": {
-            "type": "object",
-            "required": [
-                "accuracy",
-                "level",
-                "successNum",
-                "trainingNum",
-                "userId"
-            ],
-            "properties": {
-                "accuracy": {
-                    "type": "number"
-                },
-                "level": {
-                    "type": "string"
-                },
-                "successNum": {
-                    "type": "integer"
-                },
-                "trainingNum": {
-                    "type": "integer"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
         "routers.RegisterRequest": {
             "type": "object",
             "required": [
@@ -754,32 +714,40 @@ const docTemplate = `{
         },
         "routers.SchulteScoreRequest": {
             "type": "object",
-            "required": [
-                "isPassed",
-                "trainingNum",
-                "userId"
-            ],
             "properties": {
                 "isPassed": {
                     "type": "boolean"
                 },
-                "trainingNum": {
+                "successNum": {
                     "type": "integer"
                 },
-                "userId": {
-                    "type": "string"
+                "timeElapsed": {
+                    "type": "number"
+                },
+                "trainingNum": {
+                    "type": "integer"
                 }
             }
         },
-        "routers.ScoreRequest": {
+        "routers.SudokuScoreRequest": {
             "type": "object",
-            "required": [
-                "accuracy",
-                "level",
-                "success_num",
-                "training_num",
-                "userId"
-            ],
+            "properties": {
+                "isPassed": {
+                    "type": "boolean"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "mistakes": {
+                    "type": "integer"
+                },
+                "timeElapsed": {
+                    "type": "number"
+                }
+            }
+        },
+        "routers.TrainingScoreRequest": {
+            "type": "object",
             "properties": {
                 "accuracy": {
                     "type": "number"
@@ -787,31 +755,20 @@ const docTemplate = `{
                 "level": {
                     "type": "string"
                 },
-                "success_num": {
+                "successNum": {
                     "type": "integer"
                 },
-                "training_num": {
+                "trainingNum": {
                     "type": "integer"
-                },
-                "userId": {
-                    "type": "string"
                 }
             }
         },
         "routers.UserUpdateRequest": {
             "type": "object",
             "required": [
-                "email",
-                "userId",
                 "username"
             ],
             "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                },
                 "username": {
                     "type": "string"
                 }
@@ -830,11 +787,11 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8000",
+	Host:             "",
 	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "API 文档",
-	Description:      "大脑训练网页开发",
+	Title:            "Brain Training API",
+	Description:      "大脑训练应用 API",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

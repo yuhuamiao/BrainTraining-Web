@@ -1,260 +1,162 @@
 <template>
-    <div class="schulte-container">
-      <h2>舒尔特表格训练</h2>
-      
-      <!-- 游戏说明 -->
-      <div v-if="!gameStarted" class="instructions">
-        <p>请在30秒内按顺序点击1到25的数字</p>
-        <button @click="startGame">开始游戏</button>
-      </div>
-      
-      <!-- 游戏界面 -->
-      <div v-else class="game-area">
-        <!-- 计时器 -->
-        <div class="timer">剩余时间: {{ timeLeft }}秒</div>
-        
-        <!-- 网格 -->
-        <div class="grid" :style="gridStyle">
-          <div 
-            v-for="(number, index) in flattenedMatrix" 
-            :key="index"
-            class="grid-cell"
-            :class="{ 
-              'selected': selectedCells.includes(number),
-              'correct': correctOrder.includes(number)
-            }"
-            @click="handleCellClick(number)"
-          >
-            {{ number }}
-          </div>
+  <section class="game-page">
+    <div class="game-topline">
+      <router-link class="back-link" to="/">返回训练</router-link>
+      <span class="eyebrow">视觉搜索 · 30 秒</span>
+    </div>
+
+    <div class="game-surface">
+      <header class="game-header">
+        <h1>舒尔特方格</h1>
+        <div class="game-meta">
+          <div><span>下一个</span><strong>{{ phase === 'playing' ? Math.min(nextNumber, 25) : '—' }}</strong></div>
+          <div><span>剩余</span><strong>{{ remaining.toFixed(1) }}s</strong></div>
         </div>
-        
-        <!-- 游戏结果 -->
-        <div v-if="gameEnded" class="result">
-          <h3 v-if="isCompleted">恭喜！您在{{ timeUsed }}秒内完成了挑战</h3>
-          <h3 v-else>时间到！您完成了{{ selectedCells.length }}个数字</h3>
-          <button @click="restartGame">再试一次</button>
+      </header>
+
+      <div v-if="phase === 'setup'" class="game-body game-setup">
+        <div class="setup-inner">
+          <div class="setup-board" aria-hidden="true"><i>1</i><i>9</i><i>4</i><i>7</i></div>
+          <h2>从 1 找到 25</h2>
+          <p>保持视线在表格中央，按数字顺序点击。</p>
+          <button class="button" type="button" :disabled="loading" @click="startGame">{{ loading ? '准备中…' : '开始 30 秒训练' }}</button>
+          <p v-if="error" class="status-line form-error">{{ error }}</p>
+        </div>
+      </div>
+
+      <div v-else-if="phase === 'playing'" class="game-body schulte-play">
+        <div class="progress-track"><i :style="{ width: `${(nextNumber - 1) / 25 * 100}%` }"></i></div>
+        <div class="schulte-grid">
+          <button
+            v-for="number in numbers"
+            :key="number"
+            type="button"
+            :class="['schulte-cell', `tone-${number % 5}`, { done: number < nextNumber, wrong: wrongNumber === number }]"
+            :disabled="number < nextNumber"
+            :aria-label="`数字 ${number}`"
+            @click="selectNumber(number)"
+          >{{ number }}</button>
+        </div>
+        <p class="status-line">{{ feedback }}</p>
+      </div>
+
+      <div v-else class="game-body game-result">
+        <div class="result-inner">
+          <p class="eyebrow">{{ completed ? 'Completed' : 'Time up' }}</p>
+          <h2>{{ completed ? '顺序完成' : `找到 ${nextNumber - 1} 个数字` }}</h2>
+          <div class="result-number">{{ elapsed.toFixed(1) }}s</div>
+          <p>{{ saveMessage }}</p>
+          <div class="result-actions">
+            <button class="button" type="button" @click="startGame">再练一次</button>
+            <router-link class="button button-secondary" to="/">选择其他训练</router-link>
+          </div>
         </div>
       </div>
     </div>
-  </template>
-  
-  <script>
-  import { ref, computed, onMounted, onUnmounted } from 'vue'
-  import axios from 'axios'
-  
-  export default {
-    name: 'SchulteGrid',
-    setup() {
-      // 响应式数据
-      const matrix = ref([])
-      const gameStarted = ref(false)
-      const gameEnded = ref(false)
-      const timeLeft = ref(30)
-      const selectedCells = ref([])
-      const correctOrder = ref([])
-      const timer = ref(null)
-      const startTime = ref(null)
-      const timeUsed = ref(0)
-      
-      // 计算属性
-      const flattenedMatrix = computed(() => {
-        return matrix.value.flat()
-      })
-      
-      const gridStyle = computed(() => {
-        const size = matrix.value.length
-        return {
-          gridTemplateColumns: `repeat(${size}, 1fr)`,
-          gridTemplateRows: `repeat(${size}, 1fr)`
-        }
-      })
-      
-      const isCompleted = computed(() => {
-        return selectedCells.value.length === 25
-      })
-      
-      // 方法
-      const fetchMatrix = async () => {
-        try {
-          const response = await axios.get('/api/v1/schulte/matrix?size=5')
-          matrix.value = response.data.matrix
-        } catch (error) {
-          console.error('获取矩阵失败:', error)
-          // 可以在这里添加错误处理逻辑
-        }
-      }
-      
-      const startGame = () => {
-        gameStarted.value = true
-        gameEnded.value = false
-        timeLeft.value = 30
-        selectedCells.value = []
-        correctOrder.value = Array.from({length: 25}, (_, i) => i + 1)
-        startTime.value = Date.now()
-        
-        // 启动计时器
-        timer.value = setInterval(() => {
-          timeLeft.value--
-          
-          if (timeLeft.value <= 0) {
-            endGame()
-          }
-        }, 1000)
-      }
-      
-      const handleCellClick = (number) => {
-        if (gameEnded.value) return
-        
-        const expectedNumber = selectedCells.value.length + 1
-        
-        if (number === expectedNumber) {
-          selectedCells.value.push(number)
-          
-          // 检查是否完成所有数字
-          if (selectedCells.value.length === 25) {
-            endGame()
-          }
-        }
-      }
-      
-      const endGame = () => {
-        clearInterval(timer.value)
-        gameEnded.value = true
-        timeUsed.value = ((Date.now() - startTime.value) / 1000).toFixed(2)
-        
-        // 提交成绩
-        submitScore()
-      }
-      
-      const submitScore = async () => {
-        try {
-          const token = localStorage.getItem('token')
-          const userId = localStorage.getItem('userId') // 假设用户ID已存储
-          
-          await axios.post('/api/v1/schulte/scores', {
-            isPassed: isCompleted.value,
-            userId: userId,
-            trainingNum: 1
-          }, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          })
-        } catch (error) {
-          console.error('提交成绩失败:', error)
-        }
-      }
-      
-      const restartGame = () => {
-        fetchMatrix()
-        startGame()
-      }
-      
-      // 生命周期钩子
-      onMounted(() => {
-        fetchMatrix()
-      })
-      
-      onUnmounted(() => {
-        if (timer.value) {
-          clearInterval(timer.value)
-        }
-      })
-      
-      return {
-        matrix,
-        gameStarted,
-        gameEnded,
-        timeLeft,
-        selectedCells,
-        correctOrder,
-        timeUsed,
-        flattenedMatrix,
-        gridStyle,
-        isCompleted,
-        startGame,
-        handleCellClick,
-        restartGame
-      }
-    }
+  </section>
+</template>
+
+<script setup>
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { apiMessage, getSchulteMatrix, submitSchulteScore } from '@/services/api'
+
+const phase = ref('setup')
+const matrix = ref([])
+const loading = ref(false)
+const error = ref('')
+const nextNumber = ref(1)
+const remaining = ref(30)
+const elapsed = ref(0)
+const completed = ref(false)
+const wrongNumber = ref(null)
+const feedback = ref('点击数字 1 开始')
+const saveMessage = ref('正在保存成绩…')
+const numbers = computed(() => matrix.value.flat())
+let timerId = null
+let wrongTimer = null
+let startedAt = 0
+
+async function loadMatrix() {
+  loading.value = true
+  error.value = ''
+  try {
+    matrix.value = (await getSchulteMatrix()).matrix
+  } catch (requestError) {
+    error.value = apiMessage(requestError, '无法获取方格')
+  } finally {
+    loading.value = false
   }
-  </script>
-  
-  <style scoped>
-  .schulte-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px;
+}
+
+async function startGame() {
+  clearTimers()
+  await loadMatrix()
+  if (!matrix.value.length) return
+  phase.value = 'playing'
+  nextNumber.value = 1
+  remaining.value = 30
+  elapsed.value = 0
+  completed.value = false
+  feedback.value = '点击数字 1 开始'
+  saveMessage.value = '正在保存成绩…'
+  startedAt = performance.now()
+  timerId = window.setInterval(tick, 50)
+}
+
+function tick() {
+  elapsed.value = (performance.now() - startedAt) / 1000
+  remaining.value = Math.max(0, 30 - elapsed.value)
+  if (remaining.value <= 0) finish(false)
+}
+
+function selectNumber(number) {
+  if (number !== nextNumber.value) {
+    wrongNumber.value = number
+    feedback.value = `下一个是 ${nextNumber.value}`
+    window.clearTimeout(wrongTimer)
+    wrongTimer = window.setTimeout(() => { wrongNumber.value = null }, 260)
+    return
   }
-  
-  .instructions {
-    text-align: center;
-    margin-bottom: 20px;
+  nextNumber.value += 1
+  feedback.value = nextNumber.value <= 25 ? `继续找 ${nextNumber.value}` : '完成'
+  if (nextNumber.value === 26) finish(true)
+}
+
+async function finish(isComplete) {
+  if (phase.value !== 'playing') return
+  window.clearInterval(timerId)
+  elapsed.value = Math.min(30, (performance.now() - startedAt) / 1000)
+  remaining.value = Math.max(0, 30 - elapsed.value)
+  completed.value = isComplete
+  phase.value = 'result'
+  try {
+    await submitSchulteScore({ isPassed: isComplete, successNum: nextNumber.value - 1, trainingNum: 25, timeElapsed: Number(elapsed.value.toFixed(2)) })
+    saveMessage.value = '成绩已保存'
+  } catch (requestError) {
+    saveMessage.value = apiMessage(requestError, '成绩暂未保存')
   }
-  
-  .game-area {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .timer {
-    font-size: 24px;
-    margin-bottom: 20px;
-    font-weight: bold;
-  }
-  
-  .grid {
-    display: grid;
-    gap: 5px;
-    margin-bottom: 20px;
-  }
-  
-  .grid-cell {
-    width: 50px;
-    height: 50px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 18px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  
-  .grid-cell:hover {
-    background-color: #f0f0f0;
-  }
-  
-  .grid-cell.selected {
-    background-color: #4caf50;
-    color: white;
-  }
-  
-  .grid-cell.correct {
-    background-color: #e8f5e9;
-  }
-  
-  .result {
-    text-align: center;
-  }
-  
-  button {
-    padding: 10px 20px;
-    background-color: #4caf50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    margin-top: 10px;
-  }
-  
-  button:hover {
-    background-color: #45a049;
-  }
-  </style>
+}
+
+function clearTimers() {
+  window.clearInterval(timerId)
+  window.clearTimeout(wrongTimer)
+}
+
+onMounted(loadMatrix)
+onBeforeUnmount(clearTimers)
+</script>
+
+<style scoped>
+.setup-board { width: 126px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin: 0 auto 24px; transform: rotate(-4deg); }
+.setup-board i { aspect-ratio: 1; display: grid; place-items: center; border: 1px solid var(--line); background: #f1f4f1; color: var(--green); font-size: 24px; font-style: normal; font-weight: 800; }
+.schulte-play { display: grid; justify-items: center; }
+.progress-track { width: min(100%, 560px); height: 4px; margin-bottom: 20px; overflow: hidden; border-radius: 2px; background: #e4e9e5; }
+.progress-track i { display: block; height: 100%; background: var(--green); transition: width 120ms linear; }
+.schulte-grid { width: min(100%, 560px); aspect-ratio: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
+.schulte-cell { min-width: 0; border: 1px solid #cdd5cf; border-radius: 5px; background: white; color: var(--ink); font-size: 24px; font-weight: 800; transition: transform 100ms ease, background 140ms ease, opacity 140ms ease; }
+.schulte-cell:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--green); }
+.schulte-cell.done { border-color: transparent; background: #e6ede8; color: #8b9690; opacity: 0.64; }
+.schulte-cell.wrong { background: #f9e2de; transform: scale(0.95); }
+.tone-0 { color: #2e6b50; }.tone-1 { color: #3d6f9f; }.tone-2 { color: #9c5e40; }.tone-3 { color: #725c8e; }.tone-4 { color: #5a625e; }
+@media (max-width: 600px) { .schulte-grid { gap: 4px; } .schulte-cell { font-size: 18px; } }
+</style>

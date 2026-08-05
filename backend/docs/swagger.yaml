@@ -1,23 +1,4 @@
 definitions:
-  routers.BusScoreRequest:
-    properties:
-      accuracy:
-        type: number
-      level:
-        type: string
-      successNum:
-        type: integer
-      trainingNum:
-        type: integer
-      userId:
-        type: string
-    required:
-    - accuracy
-    - level
-    - successNum
-    - trainingNum
-    - userId
-    type: object
   routers.LoginRequest:
     properties:
       password:
@@ -59,25 +40,6 @@ definitions:
         description: 返回一共所有的单元格
         type: integer
     type: object
-  routers.MemoryScoreRequest:
-    properties:
-      accuracy:
-        type: number
-      level:
-        type: string
-      successNum:
-        type: integer
-      trainingNum:
-        type: integer
-      userId:
-        type: string
-    required:
-    - accuracy
-    - level
-    - successNum
-    - trainingNum
-    - userId
-    type: object
   routers.RegisterRequest:
     properties:
       password:
@@ -96,56 +58,46 @@ definitions:
     properties:
       isPassed:
         type: boolean
+      successNum:
+        type: integer
+      timeElapsed:
+        type: number
       trainingNum:
         type: integer
-      userId:
-        type: string
-    required:
-    - isPassed
-    - trainingNum
-    - userId
     type: object
-  routers.ScoreRequest:
+  routers.SudokuScoreRequest:
+    properties:
+      isPassed:
+        type: boolean
+      level:
+        type: string
+      mistakes:
+        type: integer
+      timeElapsed:
+        type: number
+    type: object
+  routers.TrainingScoreRequest:
     properties:
       accuracy:
         type: number
       level:
         type: string
-      success_num:
+      successNum:
         type: integer
-      training_num:
+      trainingNum:
         type: integer
-      userId:
-        type: string
-    required:
-    - accuracy
-    - level
-    - success_num
-    - training_num
-    - userId
     type: object
   routers.UserUpdateRequest:
     properties:
-      email:
-        type: string
-      userId:
-        type: string
       username:
         type: string
     required:
-    - email
-    - userId
     - username
     type: object
-host: localhost:8000
 info:
   contact: {}
-  description: 大脑训练网页开发
-  license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
-  termsOfService: http://swagger.io/terms/
-  title: API 文档
+  description: 大脑训练应用 API
+  title: Brain Training API
   version: "1.0"
 paths:
   /api/v1/bus/scores:
@@ -165,7 +117,7 @@ paths:
         name: score
         required: true
         schema:
-          $ref: '#/definitions/routers.BusScoreRequest'
+          $ref: '#/definitions/routers.TrainingScoreRequest'
       produces:
       - application/json
       responses:
@@ -233,7 +185,7 @@ paths:
         name: score
         required: true
         schema:
-          $ref: '#/definitions/routers.ScoreRequest'
+          $ref: '#/definitions/routers.TrainingScoreRequest'
       produces:
       - application/json
       responses:
@@ -314,7 +266,7 @@ paths:
         name: score
         required: true
         schema:
-          $ref: '#/definitions/routers.MemoryScoreRequest'
+          $ref: '#/definitions/routers.TrainingScoreRequest'
       produces:
       - application/json
       responses:
@@ -416,8 +368,57 @@ paths:
       summary: 提交成绩
       tags:
       - 舒尔特矩阵
-  /api/v1/user/change:
+  /api/v1/sudoku/scores:
     post:
+      consumes:
+      - application/json
+      description: 保存当前用户的数独完成情况
+      parameters:
+      - description: 成绩数据
+        in: body
+        name: score
+        required: true
+        schema:
+          $ref: '#/definitions/routers.SudokuScoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+      security:
+      - ApiKeyAuth: []
+      summary: 提交数独成绩
+      tags:
+      - 数独挑战
+  /api/v1/user/me:
+    get:
+      consumes:
+      - application/json
+      description: 获取用户的个人信息
+      parameters:
+      - default: Bearer <your_token>
+        description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      security:
+      - ApiKeyAuth: []
+      summary: 获取用户基本信息
+      tags:
+      - 用户
+    patch:
       consumes:
       - application/json
       description: 更新用户的基本信息
@@ -458,11 +459,6 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: 用户ID
-        in: formData
-        name: userId
-        required: true
-        type: string
       - description: 头像文件
         in: formData
         name: avatar
@@ -492,11 +488,6 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: 用户ID
-        in: query
-        name: userId
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -507,35 +498,6 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: 获取用户所有训练成绩
-      tags:
-      - 用户
-  /api/v1/user/users:
-    get:
-      consumes:
-      - application/json
-      description: 获取用户的个人信息
-      parameters:
-      - default: Bearer <your_token>
-        description: Bearer Token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: 用户ID
-        in: query
-        name: userId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-        "400":
-          description: Bad Request
-      security:
-      - ApiKeyAuth: []
-      summary: 获取用户基本信息
       tags:
       - 用户
 securityDefinitions:

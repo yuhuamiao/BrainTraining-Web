@@ -35,6 +35,20 @@ func (d *UserDAO) UpdateUser(user *models.User) error {
 	return d.db.Save(user).Error
 }
 
+func (d *UserDAO) UpdateUsername(userID, username string) error {
+	return d.db.Model(&models.User{}).
+		Where("user_id = ?", userID).
+		Update("username", username).
+		Error
+}
+
+func (d *UserDAO) UpdateLastLogin(userID string, timestamp int64) error {
+	return d.db.Model(&models.User{}).
+		Where("user_id = ?", userID).
+		Update("last_login_at", timestamp).
+		Error
+}
+
 func (d *UserDAO) UpdateAvatar(userID, avatarURL string) error {
 	return d.db.Model(&models.User{}).
 		Where("user_id = ?", userID).
@@ -73,6 +87,12 @@ func (d *UserDAO) GetUserScores(userID string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	result["bus"] = busScores
+
+	var sudokuScores []models.SudokuRecord
+	if err := d.db.Where("user_id = ?", userID).Find(&sudokuScores).Error; err != nil {
+		return nil, err
+	}
+	result["sudoku"] = sudokuScores
 
 	return result, nil
 }

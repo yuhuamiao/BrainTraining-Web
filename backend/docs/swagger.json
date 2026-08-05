@@ -1,17 +1,11 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "大脑训练网页开发",
-        "title": "API 文档",
-        "termsOfService": "http://swagger.io/terms/",
+        "description": "大脑训练应用 API",
+        "title": "Brain Training API",
         "contact": {},
-        "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-        },
         "version": "1.0"
     },
-    "host": "localhost:8000",
     "paths": {
         "/api/v1/bus/scores": {
             "post": {
@@ -46,7 +40,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/routers.BusScoreRequest"
+                            "$ref": "#/definitions/routers.TrainingScoreRequest"
                         }
                     }
                 ],
@@ -149,7 +143,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/routers.ScoreRequest"
+                            "$ref": "#/definitions/routers.TrainingScoreRequest"
                         }
                     }
                 ],
@@ -273,7 +267,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/routers.MemoryScoreRequest"
+                            "$ref": "#/definitions/routers.TrainingScoreRequest"
                         }
                     }
                 ],
@@ -421,8 +415,86 @@
                 }
             }
         },
-        "/api/v1/user/change": {
+        "/api/v1/sudoku/scores": {
             "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "保存当前用户的数独完成情况",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "数独挑战"
+                ],
+                "summary": "提交数独成绩",
+                "parameters": [
+                    {
+                        "description": "成绩数据",
+                        "name": "score",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/routers.SudokuScoreRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            }
+        },
+        "/api/v1/user/me": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "获取用户的个人信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "用户"
+                ],
+                "summary": "获取用户基本信息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "Bearer \u003cyour_token\u003e",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    }
+                }
+            },
+            "patch": {
                 "security": [
                     {
                         "ApiKeyAuth": []
@@ -496,13 +568,6 @@
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "用户ID",
-                        "name": "userId",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
                         "type": "file",
                         "description": "头像文件",
                         "name": "avatar",
@@ -546,58 +611,6 @@
                         "name": "Authorization",
                         "in": "header",
                         "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "用户ID",
-                        "name": "userId",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    }
-                }
-            }
-        },
-        "/api/v1/user/users": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "获取用户的个人信息",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "用户"
-                ],
-                "summary": "获取用户基本信息",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "default": "Bearer \u003cyour_token\u003e",
-                        "description": "Bearer Token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "用户ID",
-                        "name": "userId",
-                        "in": "query",
-                        "required": true
                     }
                 ],
                 "responses": {
@@ -612,33 +625,6 @@
         }
     },
     "definitions": {
-        "routers.BusScoreRequest": {
-            "type": "object",
-            "required": [
-                "accuracy",
-                "level",
-                "successNum",
-                "trainingNum",
-                "userId"
-            ],
-            "properties": {
-                "accuracy": {
-                    "type": "number"
-                },
-                "level": {
-                    "type": "string"
-                },
-                "successNum": {
-                    "type": "integer"
-                },
-                "trainingNum": {
-                    "type": "integer"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
         "routers.LoginRequest": {
             "type": "object",
             "required": [
@@ -699,33 +685,6 @@
                 }
             }
         },
-        "routers.MemoryScoreRequest": {
-            "type": "object",
-            "required": [
-                "accuracy",
-                "level",
-                "successNum",
-                "trainingNum",
-                "userId"
-            ],
-            "properties": {
-                "accuracy": {
-                    "type": "number"
-                },
-                "level": {
-                    "type": "string"
-                },
-                "successNum": {
-                    "type": "integer"
-                },
-                "trainingNum": {
-                    "type": "integer"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
         "routers.RegisterRequest": {
             "type": "object",
             "required": [
@@ -747,32 +706,40 @@
         },
         "routers.SchulteScoreRequest": {
             "type": "object",
-            "required": [
-                "isPassed",
-                "trainingNum",
-                "userId"
-            ],
             "properties": {
                 "isPassed": {
                     "type": "boolean"
                 },
-                "trainingNum": {
+                "successNum": {
                     "type": "integer"
                 },
-                "userId": {
-                    "type": "string"
+                "timeElapsed": {
+                    "type": "number"
+                },
+                "trainingNum": {
+                    "type": "integer"
                 }
             }
         },
-        "routers.ScoreRequest": {
+        "routers.SudokuScoreRequest": {
             "type": "object",
-            "required": [
-                "accuracy",
-                "level",
-                "success_num",
-                "training_num",
-                "userId"
-            ],
+            "properties": {
+                "isPassed": {
+                    "type": "boolean"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "mistakes": {
+                    "type": "integer"
+                },
+                "timeElapsed": {
+                    "type": "number"
+                }
+            }
+        },
+        "routers.TrainingScoreRequest": {
+            "type": "object",
             "properties": {
                 "accuracy": {
                     "type": "number"
@@ -780,31 +747,20 @@
                 "level": {
                     "type": "string"
                 },
-                "success_num": {
+                "successNum": {
                     "type": "integer"
                 },
-                "training_num": {
+                "trainingNum": {
                     "type": "integer"
-                },
-                "userId": {
-                    "type": "string"
                 }
             }
         },
         "routers.UserUpdateRequest": {
             "type": "object",
             "required": [
-                "email",
-                "userId",
                 "username"
             ],
             "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                },
                 "username": {
                     "type": "string"
                 }
