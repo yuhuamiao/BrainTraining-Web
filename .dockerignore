@@ -1,0 +1,11 @@
+.git
+.gocache
+.idea
+.vscode
+**/.env
+backend/data
+backend/avatars
+backend/tmp
+frontend/dist
+frontend/node_modules
+**/*.log

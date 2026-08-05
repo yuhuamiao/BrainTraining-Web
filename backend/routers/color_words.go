@@ -8,12 +8,27 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
+	"os"
+	"strings"
 	"time"
 )
 
 var upGrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true // 允许所有跨域请求，生产环境应限制
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true
+		}
+		parsed, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+		if strings.EqualFold(parsed.Host, r.Host) {
+			return true
+		}
+		allowedOrigin := strings.TrimRight(strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGIN")), "/")
+		return allowedOrigin != "" && strings.EqualFold(strings.TrimRight(origin, "/"), allowedOrigin)
 	},
 }
 
@@ -45,6 +60,10 @@ func NewColorWordHandler(dao *dao.ColorWordDAO) *ColorWordHandler {
 // @Router /api/v1/color_words/matrix [get]
 func (h *ColorWordHandler) ColorWordsMatrix(c *gin.Context) {
 	difficulty := c.DefaultQuery("difficulty", "easy")
+	if !validDifficulty(difficulty) {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "InvalidDifficulty", Message: "难度必须是 easy、medium 或 hard"})
+		return
+	}
 	matrix := generateColorMatrix(difficulty)
 	c.JSON(200, gin.H{
 		"matrix":     matrix,
@@ -60,13 +79,13 @@ func (h *ColorWordHandler) ColorWordsMatrix(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param Authorization header string true "Bearer Token" default(Bearer <your_token>)
-// @Param score body ScoreRequest true "成绩数据"
+// @Param score body TrainingScoreRequest true "成绩数据"
 // @Success 200
 // @Failure 400
 // @Failure 500
 // @Router /api/v1/color_words/scores [post]
 func (h *ColorWordHandler) SubmitScore(c *gin.Context) {
-	var req ScoreRequest
+	var req TrainingScoreRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "InvalidRequest",
@@ -75,9 +94,17 @@ func (h *ColorWordHandler) SubmitScore(c *gin.Context) {
 		})
 		return
 	}
+	if !validateTrainingScore(c, req) {
+		return
+	}
+	userID, ok := currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized", Message: "用户身份无效"})
+		return
+	}
 
 	record := &models.ColorWordRecord{
-		UserID:      req.UserID,
+		UserID:      userID,
 		SuccessNum:  req.SuccessNum,
 		Level:       req.Level,
 		Accuracy:    req.Accuracy, //准确度
@@ -92,9 +119,7 @@ func (h *ColorWordHandler) SubmitScore(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, SuccessResponse{
-		Success: true,
-	})
+	success(c, gin.H{"accuracy": req.Accuracy, "level": req.Level})
 }
 
 // ColorStream WebSocket颜色流
@@ -193,18 +218,9 @@ func generateRandomColor() string {
 	return colors[rand.Intn(len(colors))]
 }
 
-// 请求和响应结构体
-type ScoreRequest struct {
-	UserID      string  `json:"userId" binding:"required"`
-	SuccessNum  int     `json:"success_num" binding:"required"`
-	Level       string  `json:"level" binding:"required"`
-	Accuracy    float64 `json:"accuracy" binding:"required"`
-	TrainingNum int     `json:"training_num" binding:"required"`
-}
-
 type ColorWordMatrixResponse struct {
-	Matrix     []gin.H `json:"matrix"`
-	Difficulty string  `json:"difficulty"`
+	Matrix     [][]gin.H `json:"matrix"`
+	Difficulty string    `json:"difficulty"`
 }
 
 type ErrorResponse struct {
@@ -215,6 +231,6 @@ type ErrorResponse struct {
 
 type SuccessResponse struct {
 	Success bool   `json:"success"`
-	Message string `json:"message"`
-	Data    gin.H  `json:"data"`
+	Message string `json:"message,omitempty"`
+	Data    gin.H  `json:"data,omitempty"`
 }

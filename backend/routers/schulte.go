@@ -3,7 +3,6 @@ package routers
 import (
 	"braintraining/backend/dao"
 	"braintraining/backend/models"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"math/rand"
 	"strconv"
@@ -18,9 +17,10 @@ type MatrixResponse struct {
 
 // SchulteScoreRequest 提交成绩的请求结构
 type SchulteScoreRequest struct {
-	IsPassed    bool   `json:"isPassed" binding:"required"`
-	UserID      string `json:"userId" binding:"required"`
-	TrainingNum int    `json:"trainingNum" binding:"required"`
+	IsPassed    bool    `json:"isPassed"`
+	SuccessNum  int     `json:"successNum"`
+	TrainingNum int     `json:"trainingNum"`
+	TimeElapsed float64 `json:"timeElapsed"`
 }
 
 // SchulteMatrix 生成舒尔特矩阵
@@ -67,28 +67,35 @@ func SubmitScore(c *gin.Context, dao *dao.SchulteDAO) {
 	//dao := c.MustGet("dao").(*dao.SchulteDAO)
 
 	var score SchulteScoreRequest
-	if err := c.ShouldBindJSON(&score); err != nil || score.TrainingNum < 1 || score.TrainingNum > 6 {
-		c.JSON(400, gin.H{"error": err.Error()})
+	if err := c.ShouldBindJSON(&score); err != nil {
+		c.JSON(400, ErrorResponse{Error: "InvalidRequest", Message: "无效的请求参数"})
+		return
+	}
+	if score.TrainingNum != 25 || score.SuccessNum < 0 || score.SuccessNum > score.TrainingNum || score.TimeElapsed < 0 || score.TimeElapsed > 30.5 {
+		c.JSON(400, ErrorResponse{Error: "InvalidScore", Message: "成绩数据不合法"})
+		return
+	}
+	userID, ok := currentUserID(c)
+	if !ok {
+		c.JSON(401, ErrorResponse{Error: "Unauthorized", Message: "用户身份无效"})
 		return
 	}
 
 	// TODO: 存储到数据库
 	scoreSql := &models.SchulteScore{
-		UserID:      score.UserID,
+		UserID:      userID,
 		IsPassed:    score.IsPassed,
+		SuccessNum:  score.SuccessNum,
 		TrainingNum: score.TrainingNum,
+		TimeElapsed: score.TimeElapsed,
 	}
 
 	if err := dao.CreateScore(scoreSql); err != nil {
-		c.JSON(500, gin.H{"error": fmt.Sprintf("存储失败：%v", err)})
+		c.JSON(500, ErrorResponse{Error: "DatabaseError", Message: "保存成绩失败"})
 		return
 	}
 
-	c.JSON(200, gin.H{
-		"status":  "success",
-		"message": "score saved",
-		"id":      score.UserID,
-	})
+	success(c, gin.H{"isPassed": score.IsPassed, "timeElapsed": score.TimeElapsed})
 }
 
 //// SchulteRoutes 注册舒尔特相关路由

@@ -36,6 +36,10 @@ func NewMemoryHandler(dao *dao.MemoryDAO) *MemoryHandler {
 // @Router /api/v1/memory/matrix [get]
 func (h *MemoryHandler) MemoryMatrix(c *gin.Context) {
 	difficulty := c.DefaultQuery("difficulty", "easy")
+	if !validDifficulty(difficulty) {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "InvalidDifficulty", Message: "难度必须是 easy、medium 或 hard"})
+		return
+	}
 	config := h.GetConfigByDifficulty(difficulty)
 	//if err != nil {
 	//	c.JSON(http.StatusBadRequest, ErrorResponse{
@@ -65,13 +69,13 @@ func (h *MemoryHandler) MemoryMatrix(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param Authorization header string true "Bearer Token" default(Bearer <your_token>)
-// @Param score body MemoryScoreRequest true "成绩数据"
+// @Param score body TrainingScoreRequest true "成绩数据"
 // @Success 200
 // @Failure 400
 // @Failure 500
 // @Router /api/v1/memory/scores [post]
 func (h *MemoryHandler) SubmitScore(c *gin.Context) {
-	var req MemoryScoreRequest
+	var req TrainingScoreRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "InvalidRequest",
@@ -80,17 +84,17 @@ func (h *MemoryHandler) SubmitScore(c *gin.Context) {
 		})
 		return
 	}
-
-	config := h.GetConfigByDifficulty(req.Level)
-
-	accuracy := 0.0
-	if config.GridSize > 0 {
-		//accuracy = float64(req.SuccessNum) / float64(config.InitialCells)
-		accuracy = float64(req.SuccessNum) / float64(10)
+	if !validateTrainingScore(c, req) {
+		return
+	}
+	userID, ok := currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized", Message: "用户身份无效"})
+		return
 	}
 
 	record := &models.MemoryRecord{
-		UserID:      req.UserID,
+		UserID:      userID,
 		SuccessNum:  req.SuccessNum,
 		Level:       req.Level,
 		Accuracy:    req.Accuracy,
@@ -105,13 +109,7 @@ func (h *MemoryHandler) SubmitScore(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, SuccessResponse{
-		Success: true,
-		Data: gin.H{
-			"accuracy": accuracy,
-			"level":    req.Level,
-		},
-	})
+	success(c, gin.H{"accuracy": req.Accuracy, "level": req.Level})
 }
 
 //// GetConfig 获取配置
@@ -163,31 +161,31 @@ func (h *MemoryHandler) GetConfigByDifficulty(difficulty string) *MemoryConfig {
 	switch difficulty {
 	case "easy":
 		config = MemoryConfig{
-			GridSize:     30,     // 5x6网格
-			InitialCells: 5 + 10, // 初始显示5个单元格
-			DisplayTime:  3.0,    // 显示3秒
-			AnswerTime:   5.0,    // 答题时间5秒
+			GridSize:     30,
+			InitialCells: 5,
+			DisplayTime:  3.0, // 显示3秒
+			AnswerTime:   8.0,
 		}
 	case "medium":
 		config = MemoryConfig{
-			GridSize:     42, // 6x7网格
-			InitialCells: 6 + 10,
+			GridSize:     42,
+			InitialCells: 7,
 			DisplayTime:  2.5,
-			AnswerTime:   4.0,
+			AnswerTime:   7.0,
 		}
 	case "hard":
 		config = MemoryConfig{
-			GridSize:     56, // 7x8网格
-			InitialCells: 7 + 10,
+			GridSize:     56,
+			InitialCells: 9,
 			DisplayTime:  2.0,
-			AnswerTime:   3.0,
+			AnswerTime:   6.0,
 		}
 	default:
 		config = MemoryConfig{
 			GridSize:     30,
-			InitialCells: 5 + 10,
+			InitialCells: 5,
 			DisplayTime:  3.0,
-			AnswerTime:   5.0,
+			AnswerTime:   8.0,
 		}
 	}
 	return &config
@@ -202,14 +200,6 @@ type MemoryConfig struct {
 }
 
 // 请求和响应结构体
-type MemoryScoreRequest struct {
-	UserID      string  `json:"userId" binding:"required"`
-	SuccessNum  int     `json:"successNum" binding:"required"`
-	Level       string  `json:"level" binding:"required"`
-	Accuracy    float64 `json:"accuracy" binding:"required"`
-	TrainingNum int     `json:"trainingNum" binding:"required"`
-}
-
 type MemoryMatrixResponse struct {
 	Positions   []int   `json:"positions"`   //返回的要亮的 15 个数字
 	DisplayTime float64 `json:"displayTime"` //返回 展示时间

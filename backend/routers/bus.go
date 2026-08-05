@@ -27,13 +27,13 @@ func NewBusHandler(dao *dao.BusDAO) *BusHandler {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param Authorization header string true "Bearer Token" default(Bearer <your_token>)
-// @Param score body BusScoreRequest true "成绩数据"
+// @Param score body TrainingScoreRequest true "成绩数据"
 // @Success 200
 // @Failure 400
 // @Failure 500
 // @Router /api/v1/bus/scores [post]
 func (h *BusHandler) SubmitScore(c *gin.Context) {
-	var req BusScoreRequest
+	var req TrainingScoreRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "InvalidRequest",
@@ -42,11 +42,17 @@ func (h *BusHandler) SubmitScore(c *gin.Context) {
 		})
 		return
 	}
-
-	accuracy := float64(req.SuccessNum) / float64(3)
+	if !validateTrainingScore(c, req) {
+		return
+	}
+	userID, ok := currentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized", Message: "用户身份无效"})
+		return
+	}
 
 	record := &models.BusRecord{
-		UserID:      req.UserID,
+		UserID:      userID,
 		SuccessNum:  req.SuccessNum,
 		Level:       req.Level,
 		Accuracy:    req.Accuracy,
@@ -61,19 +67,5 @@ func (h *BusHandler) SubmitScore(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, SuccessResponse{
-		Success: true,
-		Data: gin.H{
-			"accuracy": accuracy,
-			"level":    req.Level,
-		},
-	})
-}
-
-type BusScoreRequest struct {
-	UserID      string  `json:"userId" binding:"required"`
-	SuccessNum  int     `json:"successNum" binding:"required"`
-	Level       string  `json:"level" binding:"required"`
-	Accuracy    float64 `json:"accuracy" binding:"required"`
-	TrainingNum int     `json:"trainingNum" binding:"required"`
+	success(c, gin.H{"accuracy": req.Accuracy, "level": req.Level})
 }
