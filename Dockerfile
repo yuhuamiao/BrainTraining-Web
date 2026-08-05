@@ -7,7 +7,10 @@ RUN npm run build
 
 FROM golang:1.24-bookworm AS backend-builder
 WORKDIR /src/backend
-RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev \
+RUN sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' \
+        /etc/apt/sources.list.d/debian.sources \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends gcc libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
@@ -15,7 +18,10 @@ COPY backend/ ./
 RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /out/brain-training .
 
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata \
+RUN sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' \
+        /etc/apt/sources.list.d/debian.sources \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates tzdata \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 10001 --create-home appuser
 WORKDIR /app
