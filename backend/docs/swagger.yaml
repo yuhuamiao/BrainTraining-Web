@@ -43,10 +43,11 @@ definitions:
   routers.RegisterRequest:
     properties:
       password:
-        description: Email    string `json:"email" binding:"required,email"`
+        description: Password 至少 6 个字符，UTF-8 编码后不能超过 72 字节
         minLength: 6
         type: string
       username:
+        description: Username 去除首尾空白后为 3 到 50 个字符
         maxLength: 50
         minLength: 3
         type: string

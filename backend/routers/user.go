@@ -124,8 +124,8 @@ func (h *UserHandler) UpdateUserInfo(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized", Message: "用户身份无效"})
 		return
 	}
-	username := strings.TrimSpace(req.Username)
-	if len([]rune(username)) < 3 || len([]rune(username)) > 50 {
+	username, valid := normalizeUsername(req.Username)
+	if !valid {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "InvalidUsername", Message: "用户名长度应为 3 到 50 个字符"})
 		return
 	}
@@ -237,7 +237,7 @@ type ScoreSummary struct {
 	CreatedAt   time.Time `json:"createdAt"`
 	SuccessNum  int       `json:"successNum,omitempty"`
 	TrainingNum int       `json:"trainingNum,omitempty"`
-	Accuracy    float64   `json:"accuracy,omitempty"`
+	Accuracy    *float64  `json:"accuracy,omitempty"`
 	Level       string    `json:"level,omitempty"`
 	IsPassed    bool      `json:"isPassed"`
 	TimeElapsed float64   `json:"timeElapsed,omitempty"`
@@ -284,12 +284,16 @@ func summarizeTrainingRecords[T models.ColorWordRecord | models.MemoryRecord | m
 	for _, item := range records {
 		switch record := any(item).(type) {
 		case models.ColorWordRecord:
-			items = append(items, ScoreSummary{ID: record.ID, CreatedAt: record.CreatedAt, SuccessNum: record.SuccessNum, TrainingNum: record.TrainingNum, Accuracy: record.Accuracy, Level: record.Level})
+			items = append(items, ScoreSummary{ID: record.ID, CreatedAt: record.CreatedAt, SuccessNum: record.SuccessNum, TrainingNum: record.TrainingNum, Accuracy: float64Pointer(record.Accuracy), Level: record.Level})
 		case models.MemoryRecord:
-			items = append(items, ScoreSummary{ID: record.ID, CreatedAt: record.CreatedAt, SuccessNum: record.SuccessNum, TrainingNum: record.TrainingNum, Accuracy: record.Accuracy, Level: record.Level})
+			items = append(items, ScoreSummary{ID: record.ID, CreatedAt: record.CreatedAt, SuccessNum: record.SuccessNum, TrainingNum: record.TrainingNum, Accuracy: float64Pointer(record.Accuracy), Level: record.Level})
 		case models.BusRecord:
-			items = append(items, ScoreSummary{ID: record.ID, CreatedAt: record.CreatedAt, SuccessNum: record.SuccessNum, TrainingNum: record.TrainingNum, Accuracy: record.Accuracy, Level: record.Level})
+			items = append(items, ScoreSummary{ID: record.ID, CreatedAt: record.CreatedAt, SuccessNum: record.SuccessNum, TrainingNum: record.TrainingNum, Accuracy: float64Pointer(record.Accuracy), Level: record.Level})
 		}
 	}
 	return items
+}
+
+func float64Pointer(value float64) *float64 {
+	return &value
 }

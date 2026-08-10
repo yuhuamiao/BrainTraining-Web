@@ -50,12 +50,18 @@
 
 ## Docker 部署
 
-```powershell
-$env:JWT_SECRET = "替换为足够长的随机字符串"
-docker compose up --build
+生产部署必须先设置至少 32 个字符的随机 JWT 密钥，未设置时 Compose 会直接拒绝启动：
+
+```bash
+export JWT_SECRET="$(openssl rand -hex 32)"
+docker compose up -d --build
 ```
 
 打开 `http://localhost:8000`。前后端打包在同一容器中，数据库和头像分别保存在 Docker volume，重建容器不会丢失。
+
+公网部署时应在容器前使用 Nginx、Caddy 等反向代理启用 HTTPS，并对登录、注册和头像上传接口配置请求频率限制；不要直接把开发模式服务暴露到公网。
+
+Docker 构建默认通过 `https://goproxy.cn,direct` 下载 Go 模块；需要使用其他代理时，可在构建前设置 `GOPROXY` 环境变量覆盖。
 
 ## 配置
 
@@ -64,9 +70,9 @@ docker compose up --build
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `PORT` | `8000` | HTTP 服务端口 |
-| `JWT_SECRET` | 本地开发值 | 生产环境必须设置为随机密钥 |
+| `JWT_SECRET` | 仅 debug 模式有本地开发值 | release/Docker 模式必须设置至少 32 个字符的随机密钥 |
 | `DB_DRIVER` | `sqlite` | `sqlite` 或 `mysql` |
-| `DB_PATH` | `./data/brain-training.db` | SQLite 文件路径 |
+| `DB_PATH` | `./data/brain-training.db` | SQLite 文件路径；默认启用 WAL、外键和 5 秒锁等待 |
 | `DB_HOST` / `DB_PORT` | `127.0.0.1` / `3306` | MySQL 地址 |
 | `DB_USER` / `DB_PASSWORD` / `DB_NAME` | - | MySQL 凭据与库名 |
 | `CORS_ALLOWED_ORIGIN` | 空 | 跨域开发时允许的精确来源 |

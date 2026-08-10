@@ -25,11 +25,11 @@
         </div>
         <div class="field">
           <label for="password">密码</label>
-          <input id="password" v-model="password" class="input" type="password" minlength="6" autocomplete="new-password" required />
+          <input id="password" v-model="password" class="input" type="password" minlength="6" maxlength="72" autocomplete="new-password" required />
         </div>
         <div class="field">
           <label for="confirm-password">确认密码</label>
-          <input id="confirm-password" v-model="confirmPassword" class="input" type="password" minlength="6" autocomplete="new-password" required />
+          <input id="confirm-password" v-model="confirmPassword" class="input" type="password" minlength="6" maxlength="72" autocomplete="new-password" required />
         </div>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
         <p v-if="success" class="form-success">{{ success }}</p>
@@ -58,6 +58,10 @@ async function handleRegister() {
   error.value = ''
   if (password.value !== confirmPassword.value) {
     error.value = '两次输入的密码不一致'
+    return
+  }
+  if (new TextEncoder().encode(password.value).length > 72) {
+    error.value = '密码不能超过 72 字节，中文通常最多 24 个字符'
     return
   }
   loading.value = true

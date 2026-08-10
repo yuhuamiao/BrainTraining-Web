@@ -14,22 +14,25 @@ import (
 	"time"
 )
 
-var upGrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		origin := r.Header.Get("Origin")
-		if origin == "" {
-			return true
-		}
-		parsed, err := url.Parse(origin)
-		if err != nil {
-			return false
-		}
-		if strings.EqualFold(parsed.Host, r.Host) {
-			return true
-		}
-		allowedOrigin := strings.TrimRight(strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGIN")), "/")
-		return allowedOrigin != "" && strings.EqualFold(strings.TrimRight(origin, "/"), allowedOrigin)
-	},
+const maxColorStreams = 64
+
+var colorStreamSlots = make(chan struct{}, maxColorStreams)
+var upGrader = websocket.Upgrader{CheckOrigin: validWebSocketOrigin}
+
+func validWebSocketOrigin(r *http.Request) bool {
+	origin := strings.TrimSpace(r.Header.Get("Origin"))
+	if origin == "" {
+		return false
+	}
+	parsed, err := url.Parse(origin)
+	if err != nil || parsed.Host == "" {
+		return false
+	}
+	if strings.EqualFold(parsed.Host, r.Host) {
+		return true
+	}
+	allowedOrigin := strings.TrimRight(strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGIN")), "/")
+	return allowedOrigin != "" && strings.EqualFold(strings.TrimRight(origin, "/"), allowedOrigin)
 }
 
 // 这里新加了一个名为 ColorWordHandler 的结构体及其构造函数，用于处理 HTTP 请求并调用 DAO 层进行数据操作
@@ -130,10 +133,20 @@ func (h *ColorWordHandler) SubmitScore(c *gin.Context) {
 // @Produce json
 // @Router /api/v1/color_words/color [get]
 func (h *ColorWordHandler) ColorStream(c *gin.Context) {
-	if c.Request.Header.Get("Upgrade") != "websocket" {
+	if !strings.EqualFold(c.Request.Header.Get("Upgrade"), "websocket") {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "InvalidRequest",
 			Message: "不是有效的WebSocket请求，缺少 Upgrade: websocket 头",
+		})
+		return
+	}
+	select {
+	case colorStreamSlots <- struct{}{}:
+		defer func() { <-colorStreamSlots }()
+	default:
+		c.JSON(http.StatusServiceUnavailable, ErrorResponse{
+			Error:   "TooManyConnections",
+			Message: "颜色流连接数已达上限，请稍后重试",
 		})
 		return
 	}

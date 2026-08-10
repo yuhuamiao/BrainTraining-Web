@@ -30,9 +30,10 @@ func NewAuthHandler(userDAO *dao.UserDAO) *AuthHandler {
 
 // RegisterRequest 注册请求结构
 type RegisterRequest struct {
-	Username string `json:"username" binding:"required,min=3,max=50"`
-	//Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
+	// Username 去除首尾空白后为 3 到 50 个字符
+	Username string `json:"username" binding:"required" minLength:"3" maxLength:"50"`
+	// Password 至少 6 个字符，UTF-8 编码后不能超过 72 字节
+	Password string `json:"password" binding:"required" minLength:"6"`
 }
 
 // LoginRequest 登录请求结构
@@ -62,7 +63,22 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	req.Username = strings.TrimSpace(req.Username)
+	var valid bool
+	req.Username, valid = normalizeUsername(req.Username)
+	if !valid {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error:   "InvalidUsername",
+			Message: "用户名长度应为 3 到 50 个字符",
+		})
+		return
+	}
+	if !validPassword(req.Password) {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error:   "InvalidPassword",
+			Message: "密码至少需要 6 个字符，且不能超过 72 字节",
+		})
+		return
+	}
 	if _, err := h.UserDAO.GetUserByUsername(req.Username); err == nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "UsernameExists",
@@ -130,12 +146,18 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	req.Username = strings.TrimSpace(req.Username)
+	if req.Username == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "InvalidUsername", Message: "用户名不能为空"})
+		return
+	}
+
 	// 获取用户
 	user, err := h.UserDAO.GetUserByUsername(req.Username)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{
 			Error:   "AuthFailed",
-			Message: "用户名错误",
+			Message: "用户名或密码错误",
 		})
 		return
 	}
@@ -144,7 +166,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if !user.CheckPassword(req.Password) {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{
 			Error:   "AuthFailed",
-			Message: "密码错误",
+			Message: "用户名或密码错误",
 		})
 		return
 	}

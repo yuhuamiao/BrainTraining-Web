@@ -73,7 +73,7 @@ function enterNumber(number) {
   values.value = nextValues
   const nextWrong = new Set(wrongCells.value)
   if (number && String(number) !== solution.value[index]) {
-    if (!nextWrong.has(index)) mistakes.value += 1
+    mistakes.value += 1
     nextWrong.add(index)
   } else nextWrong.delete(index)
   wrongCells.value = nextWrong

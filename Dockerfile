@@ -6,6 +6,8 @@ COPY frontend/ ./
 RUN npm run build
 
 FROM golang:1.24-bookworm AS backend-builder
+ARG GOPROXY=https://goproxy.cn,direct
+ENV GOPROXY=${GOPROXY}
 WORKDIR /src/backend
 RUN sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' \
         /etc/apt/sources.list.d/debian.sources \

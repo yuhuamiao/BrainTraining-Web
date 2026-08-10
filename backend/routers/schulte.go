@@ -71,7 +71,8 @@ func SubmitScore(c *gin.Context, dao *dao.SchulteDAO) {
 		c.JSON(400, ErrorResponse{Error: "InvalidRequest", Message: "无效的请求参数"})
 		return
 	}
-	if score.TrainingNum != 25 || score.SuccessNum < 0 || score.SuccessNum > score.TrainingNum || score.TimeElapsed < 0 || score.TimeElapsed > 30.5 {
+	passed := score.SuccessNum == score.TrainingNum
+	if score.TrainingNum != 25 || score.SuccessNum < 0 || score.SuccessNum > score.TrainingNum || score.IsPassed != passed || score.TimeElapsed < 0 || score.TimeElapsed > 30.5 {
 		c.JSON(400, ErrorResponse{Error: "InvalidScore", Message: "成绩数据不合法"})
 		return
 	}

@@ -138,4 +138,98 @@ func TestTrainingDataValidation(t *testing.T) {
 	if invalid.Code != http.StatusBadRequest {
 		t.Fatalf("invalid Schulte size returned %d", invalid.Code)
 	}
+
+	token, _ := registerAndLogin(t, app, "validation-user")
+	inconsistentAccuracy := requestJSON(t, app, http.MethodPost, "/api/v1/memory/scores", map[string]any{
+		"successNum": 0, "trainingNum": 10, "accuracy": 1, "level": "easy",
+	}, token)
+	if inconsistentAccuracy.Code != http.StatusBadRequest {
+		t.Fatalf("inconsistent accuracy returned %d: %s", inconsistentAccuracy.Code, inconsistentAccuracy.Body.String())
+	}
+
+	inconsistentPass := requestJSON(t, app, http.MethodPost, "/api/v1/schulte/scores", map[string]any{
+		"isPassed": true, "successNum": 0, "trainingNum": 25, "timeElapsed": 1,
+	}, token)
+	if inconsistentPass.Code != http.StatusBadRequest {
+		t.Fatalf("inconsistent Schulte pass returned %d: %s", inconsistentPass.Code, inconsistentPass.Body.String())
+	}
+}
+
+func TestRegistrationNormalizesAndValidatesUsername(t *testing.T) {
+	app, db := newTestApp(t)
+
+	whitespace := requestJSON(t, app, http.MethodPost, "/api/v1/register", map[string]string{
+		"username": "   ",
+		"password": "secret123",
+	}, "")
+	if whitespace.Code != http.StatusBadRequest {
+		t.Fatalf("whitespace username returned %d: %s", whitespace.Code, whitespace.Body.String())
+	}
+
+	tooLongPassword := requestJSON(t, app, http.MethodPost, "/api/v1/register", map[string]string{
+		"username": "long-password-user",
+		"password": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+	}, "")
+	if tooLongPassword.Code != http.StatusBadRequest {
+		t.Fatalf("73-byte password returned %d: %s", tooLongPassword.Code, tooLongPassword.Body.String())
+	}
+
+	registered := requestJSON(t, app, http.MethodPost, "/api/v1/register", map[string]string{
+		"username": "  padded-user  ",
+		"password": "secret123",
+	}, "")
+	if registered.Code != http.StatusOK {
+		t.Fatalf("padded username returned %d: %s", registered.Code, registered.Body.String())
+	}
+
+	var user models.User
+	if err := db.Where("username = ?", "padded-user").First(&user).Error; err != nil {
+		t.Fatalf("trimmed user was not stored: %v", err)
+	}
+
+	login := requestJSON(t, app, http.MethodPost, "/api/v1/login", map[string]string{
+		"username": "  padded-user  ",
+		"password": "secret123",
+	}, "")
+	if login.Code != http.StatusOK {
+		t.Fatalf("login with padded username returned %d: %s", login.Code, login.Body.String())
+	}
+
+	unicode := requestJSON(t, app, http.MethodPost, "/api/v1/register", map[string]string{
+		"username": "训练者",
+		"password": "secret123",
+	}, "")
+	if unicode.Code != http.StatusOK {
+		t.Fatalf("three-character Unicode username returned %d: %s", unicode.Code, unicode.Body.String())
+	}
+}
+
+func TestZeroAccuracyIsPreserved(t *testing.T) {
+	app, _ := newTestApp(t)
+	token, _ := registerAndLogin(t, app, "zero-accuracy-user")
+
+	for _, score := range []map[string]any{
+		{"successNum": 0, "trainingNum": 1, "accuracy": 0, "level": "easy"},
+		{"successNum": 1, "trainingNum": 1, "accuracy": 1, "level": "easy"},
+	} {
+		response := requestJSON(t, app, http.MethodPost, "/api/v1/bus/scores", score, token)
+		if response.Code != http.StatusOK {
+			t.Fatalf("submit bus score returned %d: %s", response.Code, response.Body.String())
+		}
+	}
+
+	response := requestJSON(t, app, http.MethodGet, "/api/v1/user/scores", nil, token)
+	if response.Code != http.StatusOK {
+		t.Fatalf("get scores returned %d: %s", response.Code, response.Body.String())
+	}
+	var scores map[string][]map[string]any
+	if err := json.Unmarshal(response.Body.Bytes(), &scores); err != nil {
+		t.Fatalf("decode scores: %v", err)
+	}
+	if len(scores["bus"]) != 2 {
+		t.Fatalf("got %d bus scores, want 2", len(scores["bus"]))
+	}
+	if accuracy, exists := scores["bus"][0]["accuracy"]; !exists || accuracy != float64(0) {
+		t.Fatalf("zero accuracy was not preserved: %#v", scores["bus"][0])
+	}
 }

@@ -38,8 +38,8 @@ a { color: inherit; }
 .desktop-nav { display: flex; align-self: stretch; gap: 26px; }
 .desktop-nav a { display: grid; place-items: center; border-bottom: 2px solid transparent; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 650; }
 .desktop-nav a.router-link-active { color: var(--ink); border-bottom-color: var(--green); }
-.account-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-.account-name { color: var(--muted); font-size: 14px; }
+.account-actions { min-width: 0; margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.account-name { min-width: 0; max-width: min(30vw, 240px); overflow: hidden; color: var(--muted); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .app-main { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 38px 0 64px; }
 .auth-main { min-height: 100vh; }
 .mobile-nav { display: none; }

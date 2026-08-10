@@ -1,10 +1,13 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
     ports:
       - "8000:8000"
     environment:
-      JWT_SECRET: ${JWT_SECRET:-local-docker-secret-change-before-production}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set to a random value of at least 32 characters}
     volumes:
       - brain-training-data:/app/data
       - brain-training-avatars:/app/avatars

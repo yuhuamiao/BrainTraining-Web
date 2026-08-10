@@ -13,6 +13,7 @@ import (
 	"braintraining/backend/middleware"
 	"braintraining/backend/models"
 	"braintraining/backend/routers"
+	"braintraining/backend/utils"
 	"log"
 	"net/http"
 	"os"
@@ -141,6 +142,9 @@ func serveFrontend(router *gin.Engine) {
 
 func main() {
 	_ = godotenv.Load()
+	if err := utils.ValidateJWTConfiguration(); err != nil {
+		log.Fatalf("认证配置无效: %v", err)
+	}
 
 	db, err := config.InitDB()
 	if err != nil {

@@ -78,6 +78,7 @@ async function startGame() {
   cleanup()
   loading.value = true
   error.value = ''
+  resetPromptState()
   try {
     matrix.value = (await getColorMatrix(difficulty.value)).matrix
   } catch (requestError) {
@@ -112,17 +113,31 @@ function connectStream() {
     url = `${protocol}//${window.location.host}/api/v1/color_words/color`
   }
   socket = new WebSocket(url)
-  socket.onmessage = (event) => nextPrompt(JSON.parse(event.data).color)
+  socket.onmessage = (event) => {
+    nextPrompt(JSON.parse(event.data).color)
+    armFallbackGuard()
+  }
   socket.onerror = startFallback
-  socket.onclose = () => { if (phase.value === 'playing' && questions.value === 0) startFallback() }
-  fallbackGuard = window.setTimeout(() => { if (questions.value === 0) startFallback() }, 1800)
+  socket.onclose = () => { if (phase.value === 'playing') startFallback() }
+  armFallbackGuard()
 }
 
+function armFallbackGuard() {
+  window.clearTimeout(fallbackGuard)
+  fallbackGuard = window.setTimeout(startFallback, 1800)
+}
 function startFallback() {
   if (fallbackId || phase.value !== 'playing') return
-  socket?.close()
-  nextPrompt(randomColor())
   fallbackId = window.setInterval(() => nextPrompt(randomColor()), 1000)
+  window.clearTimeout(fallbackGuard)
+  const failedSocket = socket
+  socket = null
+  if (failedSocket) {
+    failedSocket.onclose = null
+    failedSocket.onerror = null
+    failedSocket.close()
+  }
+  nextPrompt(randomColor())
 }
 
 function randomColor() { return colors[Math.floor(Math.random() * colors.length)].value }
@@ -150,8 +165,16 @@ async function finish() {
     saveMessage.value = '成绩已保存'
   } catch (requestError) { saveMessage.value = apiMessage(requestError, '成绩暂未保存') }
 }
-function reset() { phase.value = 'setup'; remaining.value = 30; error.value = '' }
-function cleanup() { window.clearInterval(timerId); window.clearInterval(fallbackId); window.clearTimeout(fallbackGuard); fallbackId = null; socket?.close(); socket = null }
+function resetPromptState() { answering.value = false; activeCell.value = -1; currentColor.value = 'red' }
+function reset() { cleanup(); resetPromptState(); phase.value = 'setup'; remaining.value = 30; error.value = '' }
+function cleanup() {
+  window.clearInterval(timerId); window.clearInterval(fallbackId); window.clearTimeout(fallbackGuard)
+  fallbackId = null; fallbackGuard = null
+  if (socket) {
+    socket.onmessage = null; socket.onerror = null; socket.onclose = null
+    socket.close(); socket = null
+  }
+}
 onBeforeUnmount(cleanup)
 </script>
 
